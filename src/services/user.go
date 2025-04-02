@@ -10,14 +10,18 @@ import (
 type UserService interface {
 	CreateUser(user models.User) (models.User, error)
 	GetUserByID(userID uuid.UUID) (models.User, error)
+	GetUserFromAccessToken(token string) (models.User, error)
+	GetUserFromRefreshToken(refreshToken string) (models.User, error)
 }
 type userService struct {
 	userRepository repositories.UserRepository
+	authService    AuthService
 }
 
-func NewUserService(repo repositories.UserRepository) UserService {
+func NewUserService(repo repositories.UserRepository, authService AuthService) UserService {
 	return &userService{
 		userRepository: repo,
+		authService:    authService,
 	}
 }
 func (s *userService) CreateUser(user models.User) (models.User, error) {
@@ -37,4 +41,26 @@ func (s *userService) GetUserByID(userID uuid.UUID) (models.User, error) {
 		return models.User{}, err
 	}
 	return user, err
+}
+func (s *userService) GetUserFromAccessToken(token string) (models.User, error) {
+	userID, err := s.authService.ExtractUserIDfromAccessToken(token)
+	if err != nil {
+		return models.User{}, err
+	}
+	user, err := s.userRepository.GetUserByID(userID)
+	if err != nil {
+		return models.User{}, err
+	}
+	return user, nil
+}
+func (s *userService) GetUserFromRefreshToken(refreshToken string) (models.User, error) {
+	userID, err := s.authService.ExtractUserIDfromRefreshToken(refreshToken)
+	if err != nil {
+		return models.User{}, err
+	}
+	user, err := s.userRepository.GetUserByID(userID)
+	if err != nil {
+		return models.User{}, err
+	}
+	return user, nil
 }
