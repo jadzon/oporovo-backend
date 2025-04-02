@@ -245,3 +245,28 @@ func (H *UserHandler) GetUser(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, userDTOS)
 }
+func (h *UserHandler) RefreshTokens(c *gin.Context) {
+	refreshToken, err := getRefreshTokenFromCookie(c)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "No token"})
+		return
+	}
+	user, err := h.App.UserService.GetUserFromRefreshToken(refreshToken)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "Invalid token"})
+		return
+	}
+	newRefreshToken, err := h.App.AuthService.GenerateAccessToken(user)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": "Failed to generate token"})
+		return
+	}
+	newAccessToken, err := h.App.AuthService.GenerateAccessToken(user)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": "Failed to generate token"})
+		return
+	}
+	setAccessTokenCookie(c, newAccessToken, h.cookieDomain)
+	setRefreshTokenCookie(c, newRefreshToken, h.cookieDomain)
+	c.JSON(http.StatusOK, gin.H{"message": "Refreshed tokens"})
+}

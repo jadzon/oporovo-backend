@@ -24,7 +24,7 @@ func Setup(app *app.Application) *gin.Engine {
 		router.GET("/api/auth/discord", userHandler.DiscordLogin)
 		router.GET("/api/auth/discord/callback", userHandler.DiscordCallback)
 		//TODO:
-		//router.GET("/api/auth/refresh", userHandler.RefreshToken)
+		router.POST("/api/token/refresh-token", userHandler.RefreshTokens)
 		//router.GET("/api/auth/logout", userHandler.Logout)
 	}
 	// Protected API Routes
