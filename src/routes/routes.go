@@ -20,7 +20,6 @@ func Setup(app *app.Application) *gin.Engine {
 	publicAPI := router.Group("/api")
 	{
 		// Authentication Routes
-		publicAPI.POST("/login", userHandler.Login)
 		publicAPI.GET("/hello", userHandler.Hello)
 		router.GET("/api/auth/discord", userHandler.DiscordLogin)
 		router.GET("/api/auth/discord/callback", userHandler.DiscordCallback)
@@ -33,6 +32,7 @@ func Setup(app *app.Application) *gin.Engine {
 	authorized.Use(userHandler.ExtractJWTMiddleware())
 	{
 		authorized.GET("/user", userHandler.HelloAuthorized)
+		authorized.GET("/user/me", userHandler.GetUser)
 		// Add more protected routes here
 	}
 	//{

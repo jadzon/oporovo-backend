@@ -6,9 +6,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"vibely-backend/src/app"
+	"vibely-backend/src/models"
 )
 
 type UserHandler struct {
@@ -96,7 +98,7 @@ func (h *UserHandler) DiscordCallback(c *gin.Context) {
 	}
 
 	// Create or update user in the database
-	user, err := h.App.UserService.UserFromDiscord(discordUser.ID, discordUser.Username, discordUser.Email)
+	user, err := h.App.UserService.UserFromDiscord(discordUser.ID, discordUser.Username, discordUser.Email, discordUser.Avatar, discordUser.Discriminator)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create/update user"})
 		return
@@ -153,7 +155,6 @@ func (h *UserHandler) getDiscordUser(accessToken string) (*DiscordUser, error) {
 }
 
 // REST
-func (h *UserHandler) Login(c *gin.Context) {}
 
 func (h *UserHandler) ExtractJWTMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -217,4 +218,30 @@ func (h *UserHandler) Hello(c *gin.Context) {
 }
 func (h *UserHandler) HelloAuthorized(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Hello Authorized"})
+}
+func (H *UserHandler) GetUser(c *gin.Context) {
+	userInterface, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "User not found in context"})
+		log.Println("USER NOT FOUND IN CONTEXT")
+		return
+	}
+	user, ok := userInterface.(models.User) // Replace with your actual User model
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to cast user"})
+		log.Println("FAILED TO CAST")
+		return
+	}
+	userDTOS := models.UserDTOS{
+		CreatedAt:   user.CreatedAt,
+		Email:       user.Email,
+		Username:    user.Username,
+		FirstName:   user.FirstName,
+		LastName:    user.LastName,
+		DateOfBirth: user.DateOfBirth,
+		Role:        user.Role,
+		Description: user.Description,
+		Avatar:      user.RetrieveAvatarURL(),
+	}
+	c.JSON(http.StatusOK, userDTOS)
 }

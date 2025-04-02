@@ -13,7 +13,7 @@ type UserService interface {
 	GetUserByID(userID uuid.UUID) (models.User, error)
 	GetUserFromAccessToken(token string) (models.User, error)
 	GetUserFromRefreshToken(refreshToken string) (models.User, error)
-	UserFromDiscord(discordID, username, email string) (models.User, error)
+	UserFromDiscord(discordID, username, email, avatar, discriminator string) (models.User, error)
 }
 type userService struct {
 	userRepository repositories.UserRepository
@@ -75,7 +75,7 @@ func (s *userService) GetUserByEmail(email string) (models.User, error) {
 	// You need to make sure your repository has this method implemented
 	return s.userRepository.GetUserByEmail(email)
 }
-func (s *userService) UserFromDiscord(discordID, username, email string) (models.User, error) {
+func (s *userService) UserFromDiscord(discordID, username, email, avatar, discriminator string) (models.User, error) {
 	// Try to find the user by email first
 	user, err := s.GetUserByEmail(email)
 
@@ -83,10 +83,12 @@ func (s *userService) UserFromDiscord(discordID, username, email string) (models
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			newUser := models.User{
-				Username:  username,
-				Email:     email,
-				DiscordID: discordID,
-				Role:      models.UserRoleStudent,
+				Username:      username,
+				Email:         email,
+				DiscordID:     discordID,
+				Role:          models.UserRoleStudent,
+				Avatar:        avatar,
+				Discriminator: discriminator,
 			}
 
 			return s.CreateUser(newUser)
