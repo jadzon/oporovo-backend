@@ -12,6 +12,7 @@ type Application struct {
 	Config      config.Config
 	DB          *gorm.DB
 	UserService services.UserService
+	AuthService services.AuthService
 }
 
 func New(cfg config.Config) (*Application, error) {
@@ -27,5 +28,6 @@ func New(cfg config.Config) (*Application, error) {
 		Config:      cfg,
 		DB:          db,
 		UserService: userService,
+		AuthService: authService,
 	}, nil
 }

@@ -22,10 +22,19 @@ func Setup(app *app.Application) *gin.Engine {
 		// Authentication Routes
 		publicAPI.POST("/login", userHandler.Login)
 		publicAPI.GET("/hello", userHandler.Hello)
+		router.GET("/api/auth/discord", userHandler.DiscordLogin)
+		router.GET("/api/auth/discord/callback", userHandler.DiscordCallback)
+		//TODO:
+		//router.GET("/api/auth/refresh", userHandler.RefreshToken)
+		//router.GET("/api/auth/logout", userHandler.Logout)
 	}
 	// Protected API Routes
-	protectedAPI := router.Group("/api")
-	protectedAPI.Use(userHandler.ExtractJWTMiddleware())
+	authorized := router.Group("/api")
+	authorized.Use(userHandler.ExtractJWTMiddleware())
+	{
+		authorized.GET("/user", userHandler.HelloAuthorized)
+		// Add more protected routes here
+	}
 	//{
 	//	// User Profile Route
 	//	protectedAPI.GET("/user/profile", userHandler.GetUserProfile)

@@ -12,6 +12,7 @@ type UserRepository interface {
 	GetUserByUsername(username string) (models.User, error)
 	CreateUser(user models.User) (models.User, error)
 	GetUserByID(userID uuid.UUID) (models.User, error)
+	GetUserByEmail(email string) (models.User, error)
 }
 type userRepository struct {
 	db *gorm.DB
@@ -41,6 +42,13 @@ func (r *userRepository) GetUserByID(userID uuid.UUID) (models.User, error) {
 func (r *userRepository) GetUserByUsername(username string) (models.User, error) {
 	var user models.User
 	if err := r.db.Where("username = ?", username).First(&user).Error; err != nil {
+		return models.User{}, err // Return the error directly
+	}
+	return user, nil
+}
+func (r *userRepository) GetUserByEmail(email string) (models.User, error) {
+	var user models.User
+	if err := r.db.Where("email = ?", email).First(&user).Error; err != nil {
 		return models.User{}, err // Return the error directly
 	}
 	return user, nil

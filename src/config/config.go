@@ -14,6 +14,11 @@ type Config struct {
 	PostgresDB          string
 	AccessJWTSecretKey  string
 	RefreshJWTSecretKey string
+	DiscordClientID     string
+	DiscordClientSecret string
+	DiscordRedirectURL  string
+	FrontendUrl         string
+	BackendUrl          string
 }
 
 func NewConfig() Config {
@@ -30,6 +35,11 @@ func NewConfig() Config {
 		PostgresDB:          getEnv("POSTGRES_DB", "-"),
 		AccessJWTSecretKey:  getEnv("ACCESS_JWT_SECRET_KEY", ""),
 		RefreshJWTSecretKey: getEnv("REFRESH_JWT_SECRET_KEY", ""),
+		DiscordClientID:     getEnv("DISCORD_CLIENT_ID", ""),
+		DiscordClientSecret: getEnv("DISCORD_CLIENT_SECRET", ""),
+		DiscordRedirectURL:  getEnv("DISCORD_REDIRECT_URL", ""),
+		FrontendUrl:         getEnv("FRONTEND_URL", ""),
+		BackendUrl:          getEnv("BACKEND_URL", ""),
 	}
 }
 func getEnv(key, defaultValue string) string {

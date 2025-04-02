@@ -10,6 +10,7 @@ const (
 
 type User struct {
 	ID          uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+	DiscordID   string    `json:"discord_id" gorm:"uniqueIndex;not null"`
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 	Email       string    `json:"email" gorm:"uniqueIndex;not null"`

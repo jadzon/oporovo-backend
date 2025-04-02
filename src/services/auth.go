@@ -1,10 +1,12 @@
 package services
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"math/rand"
 	"time"
 	"vibely-backend/src/models"
 )
@@ -16,6 +18,7 @@ type AuthService interface {
 	ExtractUserIDfromRefreshToken(tokenString string) (uuid.UUID, error)
 	SetStudentUserRole(user *models.User)
 	SetTutorUserRole(user *models.User)
+	GenerateRandomState() string
 }
 
 type authService struct {
@@ -36,6 +39,11 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
+func (s *authService) GenerateRandomState() string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return base64.URLEncoding.EncodeToString(b)
+}
 func (s *authService) GenerateAccessToken(user models.User) (string, error) {
 	claims := JWTClaims{
 		UserID:   user.ID,
