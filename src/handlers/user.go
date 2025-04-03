@@ -246,7 +246,7 @@ func (h *UserHandler) RefreshTokens(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "Invalid token"})
 		return
 	}
-	newRefreshToken, err := h.App.AuthService.GenerateAccessToken(user)
+	newRefreshToken, err := h.App.AuthService.GenerateRefreshToken(user)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": "Failed to generate token"})
 		return
