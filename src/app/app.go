@@ -9,10 +9,11 @@ import (
 )
 
 type Application struct {
-	Config      config.Config
-	DB          *gorm.DB
-	UserService services.UserService
-	AuthService services.AuthService
+	Config        config.Config
+	DB            *gorm.DB
+	UserService   services.UserService
+	AuthService   services.AuthService
+	LessonService services.LessonService
 }
 
 func New(cfg config.Config) (*Application, error) {
@@ -24,10 +25,13 @@ func New(cfg config.Config) (*Application, error) {
 	userRepository := repositories.NewUserRepository(db)
 	authService := services.NewAuthService(cfg.AccessJWTSecretKey, cfg.RefreshJWTSecretKey)
 	userService := services.NewUserService(userRepository, authService)
+	lessonRepository := repositories.NewLessonRepository(db)
+	lessonService := services.NewLessonService(lessonRepository)
 	return &Application{
-		Config:      cfg,
-		DB:          db,
-		UserService: userService,
-		AuthService: authService,
+		Config:        cfg,
+		DB:            db,
+		UserService:   userService,
+		AuthService:   authService,
+		LessonService: lessonService,
 	}, nil
 }

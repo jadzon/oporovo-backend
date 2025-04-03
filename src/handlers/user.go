@@ -232,18 +232,8 @@ func (H *UserHandler) GetUser(c *gin.Context) {
 		log.Println("FAILED TO CAST")
 		return
 	}
-	userDTOS := models.UserDTOS{
-		CreatedAt:   user.CreatedAt,
-		Email:       user.Email,
-		Username:    user.Username,
-		FirstName:   user.FirstName,
-		LastName:    user.LastName,
-		DateOfBirth: user.DateOfBirth,
-		Role:        user.Role,
-		Description: user.Description,
-		Avatar:      user.RetrieveAvatarURL(),
-	}
-	c.JSON(http.StatusOK, userDTOS)
+	userDTO := user.ToUserDTO()
+	c.JSON(http.StatusOK, userDTO)
 }
 func (h *UserHandler) RefreshTokens(c *gin.Context) {
 	refreshToken, err := getRefreshTokenFromCookie(c)

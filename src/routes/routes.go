@@ -12,6 +12,7 @@ func Setup(app *app.Application) *gin.Engine {
 
 	// Initialize Handlers
 	userHandler := handlers.NewUserHandler(app)
+	lessonHandler := handlers.NewLessonHandler(app)
 
 	// Apply Global Middleware
 	router.Use(middleware.EnableCORS)
@@ -33,20 +34,15 @@ func Setup(app *app.Application) *gin.Engine {
 	{
 		authorized.GET("/user", userHandler.HelloAuthorized)
 		authorized.GET("/user/me", userHandler.GetUser)
+		router.POST("/lessons", lessonHandler.CreateLesson) // schedule new
+		router.GET("/lessons/:lessonID", lessonHandler.GetLesson)
+		router.PATCH("/lessons/:lessonID/confirm", lessonHandler.ConfirmLesson)
+		router.PATCH("/lessons/:lessonID/start", lessonHandler.StartLesson)
+		router.PATCH("/lessons/:lessonID/complete", lessonHandler.CompleteLesson)
+		router.PATCH("/lessons/:lessonID/fail", lessonHandler.FailLesson)
+		router.PATCH("/lessons/:lessonID/cancel", lessonHandler.CancelLesson)
+		router.PATCH("/lessons/:lessonID/postpone", lessonHandler.PostponeLesson)
 		// Add more protected routes here
 	}
-	//{
-	//	// User Profile Route
-	//	protectedAPI.GET("/user/profile", userHandler.GetUserProfile)
-	//
-	//	// Video Interaction Routes
-	//	videoGroup := protectedAPI.Group("/video")
-	//	{
-	//		videoGroup.POST("/:id/like", videoHandler.LikeVideo)
-	//		videoGroup.POST("/:id/dislike", videoHandler.DislikeVideo)
-	//		videoGroup.GET("/:id", videoHandler.GetVideo)
-	//	}
-	//}
-
 	return router
 }

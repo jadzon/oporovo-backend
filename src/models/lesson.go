@@ -6,24 +6,72 @@ import (
 	"github.com/google/uuid"
 )
 
-// Lesson represents a tutoring session between a tutor and a student
+// Lesson Status Constants
+const (
+	LessonStatusScheduled  = "scheduled"
+	LessonStatusConfirmed  = "confirmed"
+	LessonStatusInProgress = "in_progress"
+	LessonStatusDone       = "done"
+	LessonStatusFailed     = "failed"
+	LessonStatusCancelled  = "cancelled"
+)
+
+// Lesson model
+//   - Single Tutor (TutorID / Tutor field)
+//   - Many Students (Students field via a pivot table)
 type Lesson struct {
-	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+	ID uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+
+	TutorID uuid.UUID `json:"tutor_id"`
+	Tutor   User      `gorm:"foreignKey:TutorID"` // GORM association
+
+	Students []User `gorm:"many2many:lesson_students" json:"students"`
+
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	StartTime   time.Time `json:"start_time"`
+	EndTime     time.Time `json:"end_time"`
+	Status      string    `json:"status"`
+
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+}
 
-	// Foreign keys
-	TutorID   uuid.UUID `json:"tutor_id" gorm:"type:uuid;not null"`
-	StudentID uuid.UUID `json:"student_id" gorm:"type:uuid;not null"`
-
-	// Relationships
-	Tutor   User `json:"tutor" gorm:"foreignKey:TutorID"`
-	Student User `json:"student" gorm:"foreignKey:StudentID"`
-
-	// Lesson details
-	Title       string    `json:"title" gorm:"not null"`
+// LessonDTO is the shape you might return via API.
+// It includes the tutor’s info and the list of students’ info in a minimal form.
+type LessonDTO struct {
+	ID          uuid.UUID `json:"id"`
+	Title       string    `json:"title"`
 	Description string    `json:"description"`
-	StartTime   time.Time `json:"start_time" gorm:"not null"`
-	EndTime     time.Time `json:"end_time" gorm:"not null"`
-	Status      string    `json:"status" gorm:"type:varchar(20);not null;default:'scheduled'"`
+	StartTime   time.Time `json:"start_time"`
+	EndTime     time.Time `json:"end_time"`
+	Status      string    `json:"status"`
+	Tutor       UserDTO   `json:"tutor"`
+	Students    []UserDTO `json:"students"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// Convert a Lesson model to LessonDTO.
+func (l Lesson) ToDTO() LessonDTO {
+	tutorDTO := l.Tutor.ToUserDTO()
+
+	// Convert all students to user DTO
+	var students []UserDTO
+	for _, s := range l.Students {
+		students = append(students, s.ToUserDTO())
+	}
+
+	return LessonDTO{
+		ID:          l.ID,
+		Title:       l.Title,
+		Description: l.Description,
+		StartTime:   l.StartTime,
+		EndTime:     l.EndTime,
+		Status:      l.Status,
+		Tutor:       tutorDTO,
+		Students:    students,
+		CreatedAt:   l.CreatedAt,
+		UpdatedAt:   l.UpdatedAt,
+	}
 }
