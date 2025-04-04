@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"github.com/lib/pq"
 	"strconv"
 	"strings"
 	"time"
@@ -29,27 +30,10 @@ type User struct {
 	Role          string    `json:"role" gorm:"type:varchar(20);not null;default:'student'"`
 	Description   string    `json:"description" gorm:"type:text"`
 	Avatar        string    `json:"avatar"`
-}
 
-// UserDTO is a smaller representation of a user.
-// You can omit certain fields you don’t want to expose to clients.
-type UserDTO struct {
-	ID       uuid.UUID `json:"id"`
-	Username string    `json:"username"`
-	Email    string    `json:"email"`
-	Avatar   string    `json:"avatar"`
-	Role     string    `json:"role"`
-}
-
-// ToUserDTO converts a User model to a UserDTO.
-func (u User) ToUserDTO() UserDTO {
-	return UserDTO{
-		ID:       u.ID,
-		Username: u.Username,
-		Email:    u.Email,
-		Avatar:   u.RetrieveAvatarURL(),
-		Role:     u.Role,
-	}
+	// New fields:
+	Rating float64        `json:"rating"` // For tutors, e.g. 4.5 out of 5
+	Levels pq.StringArray `json:"levels" gorm:"type:text[]"`
 }
 
 // RetrieveAvatarURL constructs the URL to the user's Discord avatar.
@@ -69,4 +53,53 @@ func (u *User) RetrieveAvatarURL() string {
 		discriminator = 0
 	}
 	return fmt.Sprintf("https://cdn.discordapp.com/embed/avatars/%d.png", discriminator%5)
+}
+
+// StudentDTO includes fields for both students and tutors.
+// Now includes Rating, so even students have a rating.
+type StudentDTO struct {
+	ID          uuid.UUID `json:"id"`
+	Username    string    `json:"username"`
+	Email       string    `json:"email"`
+	Avatar      string    `json:"avatar"`
+	Role        string    `json:"role"`
+	FirstName   string    `json:"first_name"`
+	LastName    string    `json:"last_name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+	DiscordID   string    `json:"discord_id"`
+	DateOfBirth string    `json:"date_of_birth"`
+	Rating      float64   `json:"rating"`
+}
+
+// TutorDTO extends StudentDTO with tutor-specific fields.
+type TutorDTO struct {
+	StudentDTO
+	Levels []string `json:"levels"`
+}
+
+// ToStudentDTO converts a User model to a StudentDTO.
+func (u *User) ToStudentDTO() StudentDTO {
+	return StudentDTO{
+		ID:          u.ID,
+		Username:    u.Username,
+		Email:       u.Email,
+		Avatar:      u.RetrieveAvatarURL(),
+		Role:        u.Role,
+		FirstName:   u.FirstName,
+		LastName:    u.LastName,
+		Description: u.Description,
+		CreatedAt:   u.CreatedAt,
+		DiscordID:   u.DiscordID,
+		DateOfBirth: u.DateOfBirth,
+		Rating:      u.Rating,
+	}
+}
+
+// ToTutorDTO converts a User model to a TutorDTO.
+func (u *User) ToTutorDTO() TutorDTO {
+	return TutorDTO{
+		StudentDTO: u.ToStudentDTO(),
+		Levels:     u.Levels,
+	}
 }

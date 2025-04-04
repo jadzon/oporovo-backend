@@ -42,7 +42,9 @@ func Setup(app *app.Application) *gin.Engine {
 		router.PATCH("/lessons/:lessonID/fail", lessonHandler.FailLesson)
 		router.PATCH("/lessons/:lessonID/cancel", lessonHandler.CancelLesson)
 		router.PATCH("/lessons/:lessonID/postpone", lessonHandler.PostponeLesson)
-		// Add more protected routes here
+
+		authorized.GET("/user/:userID/lessons", lessonHandler.GetLessonsForUser)
+		authorized.GET("/user/:userID/tutors", lessonHandler.GetTutorsForUser)
 	}
 	return router
 }

@@ -23,7 +23,7 @@ type Lesson struct {
 	ID uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
 
 	TutorID uuid.UUID `json:"tutor_id"`
-	Tutor   User      `gorm:"foreignKey:TutorID"` // GORM association
+	Tutor   User      `gorm:"foreignKey:TutorID"`
 
 	Students []User `gorm:"many2many:lesson_students" json:"students"`
 
@@ -40,26 +40,26 @@ type Lesson struct {
 // LessonDTO is the shape you might return via API.
 // It includes the tutor’s info and the list of students’ info in a minimal form.
 type LessonDTO struct {
-	ID          uuid.UUID `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	StartTime   time.Time `json:"start_time"`
-	EndTime     time.Time `json:"end_time"`
-	Status      string    `json:"status"`
-	Tutor       UserDTO   `json:"tutor"`
-	Students    []UserDTO `json:"students"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          uuid.UUID    `json:"id"`
+	Title       string       `json:"title"`
+	Description string       `json:"description"`
+	StartTime   time.Time    `json:"start_time"`
+	EndTime     time.Time    `json:"end_time"`
+	Status      string       `json:"status"`
+	Tutor       TutorDTO     `json:"tutor"`
+	Students    []StudentDTO `json:"students"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
 }
 
 // Convert a Lesson model to LessonDTO.
 func (l Lesson) ToDTO() LessonDTO {
-	tutorDTO := l.Tutor.ToUserDTO()
+	tutorDTO := l.Tutor.ToTutorDTO()
 
 	// Convert all students to user DTO
-	var students []UserDTO
+	var students []StudentDTO
 	for _, s := range l.Students {
-		students = append(students, s.ToUserDTO())
+		students = append(students, s.ToStudentDTO())
 	}
 
 	return LessonDTO{

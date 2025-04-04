@@ -233,3 +233,49 @@ func (h *LessonHandler) PostponeLesson(c *gin.Context) {
 
 	c.JSON(http.StatusOK, lesson.ToDTO())
 }
+func (h *LessonHandler) GetLessonsForUser(c *gin.Context) {
+	userIDStr := c.Param("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+		return
+	}
+
+	lessons, err := h.App.LessonService.GetLessonsForUser(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert lessons to DTOs
+	var dtos []models.LessonDTO
+	for _, lesson := range lessons {
+		dtos = append(dtos, lesson.ToDTO())
+	}
+
+	c.JSON(http.StatusOK, dtos)
+}
+
+// GetTutorsForUser returns a unique list of tutors for lessons where the user is a student.
+func (h *LessonHandler) GetTutorsForUser(c *gin.Context) {
+	userIDStr := c.Param("userID")
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user ID"})
+		return
+	}
+
+	tutors, err := h.App.LessonService.GetTutorsForUser(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert tutors to UserDTOs
+	var dtos []models.TutorDTO
+	for _, tutor := range tutors {
+		dtos = append(dtos, tutor.ToTutorDTO())
+	}
+
+	c.JSON(http.StatusOK, dtos)
+}

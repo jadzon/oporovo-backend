@@ -22,6 +22,8 @@ type LessonService interface {
 	FailLesson(lessonID uuid.UUID) (models.Lesson, error)
 	CancelLesson(lessonID uuid.UUID) (models.Lesson, error)
 	PostponeLesson(lessonID uuid.UUID, newStart, newEnd time.Time) (models.Lesson, error)
+	GetLessonsForUser(userID uuid.UUID) ([]models.Lesson, error)
+	GetTutorsForUser(userID uuid.UUID) ([]models.User, error)
 }
 
 type lessonService struct {
@@ -156,4 +158,11 @@ func (s *lessonService) PostponeLesson(lessonID uuid.UUID, newStart, newEnd time
 		return models.Lesson{}, err
 	}
 	return lesson, nil
+}
+func (s *lessonService) GetLessonsForUser(userID uuid.UUID) ([]models.Lesson, error) {
+	return s.repo.GetLessonsForUser(userID)
+}
+
+func (s *lessonService) GetTutorsForUser(userID uuid.UUID) ([]models.User, error) {
+	return s.repo.GetTutorsForUser(userID)
 }

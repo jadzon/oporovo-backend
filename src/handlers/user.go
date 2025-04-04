@@ -232,7 +232,7 @@ func (H *UserHandler) GetUser(c *gin.Context) {
 		log.Println("FAILED TO CAST")
 		return
 	}
-	userDTO := user.ToUserDTO()
+	userDTO := user.ToStudentDTO()
 	c.JSON(http.StatusOK, userDTO)
 }
 func (h *UserHandler) RefreshTokens(c *gin.Context) {
