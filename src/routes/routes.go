@@ -13,6 +13,7 @@ func Setup(app *app.Application) *gin.Engine {
 	// Initialize Handlers
 	userHandler := handlers.NewUserHandler(app)
 	lessonHandler := handlers.NewLessonHandler(app)
+	tutorHandler := handlers.NewTutorHandler(app)
 
 	// Apply Global Middleware
 	router.Use(middleware.EnableCORS)
@@ -21,7 +22,8 @@ func Setup(app *app.Application) *gin.Engine {
 	publicAPI := router.Group("/api")
 	{
 		// Authentication Routes
-		publicAPI.GET("/hello", userHandler.Hello)
+		//publicAPI.GET("/hello", userHandler.Hello)
+		publicAPI.GET("/tutors", tutorHandler.GetTutors)
 		router.GET("/api/auth/discord", userHandler.DiscordLogin)
 		router.GET("/api/auth/discord/callback", userHandler.DiscordCallback)
 		//TODO:
@@ -34,7 +36,7 @@ func Setup(app *app.Application) *gin.Engine {
 	{
 		authorized.GET("/user", userHandler.HelloAuthorized)
 		authorized.GET("/user/me", userHandler.GetUser)
-		router.POST("/lessons", lessonHandler.CreateLesson) // schedule new
+		router.POST("/lessons", lessonHandler.CreateLesson)
 		router.GET("/lessons/:lessonID", lessonHandler.GetLesson)
 		router.PATCH("/lessons/:lessonID/confirm", lessonHandler.ConfirmLesson)
 		router.PATCH("/lessons/:lessonID/start", lessonHandler.StartLesson)

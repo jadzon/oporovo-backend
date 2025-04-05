@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq" // make sure this is imported
+	"github.com/lib/pq" // Ensure this is imported
 	"gorm.io/gorm"
 
 	"vibely-backend/src/models"
@@ -26,6 +26,7 @@ func Seed(db *gorm.DB) error {
 
 	// 2) Create multiple Tutors (10 in this example) with richer, realistic details.
 	var tutors []models.User
+
 	// Realistic sample data arrays.
 	firstNames := []string{"Michał", "Anna", "Paweł", "Katarzyna", "Tomasz", "Magdalena", "Grzegorz", "Joanna", "Piotr", "Ewa"}
 	lastNames := []string{"Kowalski", "Nowak", "Wiśniewski", "Wójcik", "Kowalczyk", "Kamińska", "Lewandowski", "Zielińska", "Szymański", "Woźniak"}
@@ -42,21 +43,53 @@ func Seed(db *gorm.DB) error {
 		"EwaWoźniak#1123",
 	}
 	levelsOptions := [][]string{
-		{"podstawówka", "liceum"},
-		{"studia"},
-		{"podstawówka", "studia"},
-		{"liceum", "studia"},
-		{"podstawówka"},
-		{"liceum"},
-		{"studia"},
-		{"podstawówka", "liceum", "studia"},
-		{"liceum", "studia"},
-		{"studia"},
+		{"Szkoła Podstawowa", "Liceum"},
+		{"Studia"},
+		{"Szkoła Podstawowa", "Studia"},
+		{"Liceum", "Studia"},
+		{"Szkoła Podstawowa"},
+		{"Liceum"},
+		{"Studia"},
+		{"Szkoła Podstawowa", "Liceum", "Studia"},
+		{"Liceum", "Studia"},
+		{"Studia"},
 	}
+	// New subjects options for tutors.
+	subjectsOptions := [][]string{
+		{"Matematyka", "Fizyka"},
+		{"Chemia", "Biologia"},
+		{"Język Polski", "Język Angielski"},
+		{"Historia", "Geografia"},
+		{"Informatyka", "Matematyka"},
+		{"Chemia", "Fizyka"},
+		{"Biologia", "Język Polski"},
+		{"Historia", "Informatyka"},
+		{"Matematyka", "Chemia"},
+		{"Fizyka", "Biologia"},
+	}
+	// New inspirational quotes for tutors.
+	quotes := []string{
+		"I believe in unlocking every student's potential.",
+		"Teaching is my passion and life's work.",
+		"I strive to inspire curiosity and learning.",
+		"Education is the key to success!",
+		"Let's learn together and grow.",
+		"Every lesson is a step toward success.",
+		"Knowledge shared is knowledge multiplied.",
+		"I'm here to guide you on your learning journey.",
+		"Passionate about making learning fun.",
+		"Empowering students one lesson at a time.",
+	}
+
+	// Set prices creatively (e.g., 50 + (i%5)*15 gives values between 50 and 110 zł).
+	var tutorPrice float64
 
 	for i := 0; i < 10; i++ {
 		// Generate a realistic username: first name + first letter of last name.
 		username := fmt.Sprintf("%s%c", firstNames[i], lastNames[i][0])
+		tutorPrice = 50.0 + float64(i%5)*15.0
+
+		// Create a tutor with enriched data.
 		tutor := models.User{
 			Email:       fmt.Sprintf("tutor%d@example.com", i+1),
 			Username:    username,
@@ -65,11 +98,18 @@ func Seed(db *gorm.DB) error {
 			FirstName:   firstNames[i],
 			LastName:    lastNames[i],
 			DateOfBirth: "1985-05-15",
-			Description: fmt.Sprintf("Cześć, jestem %s %s. Mam wieloletnie doświadczenie w nauczaniu oraz pasję do rozwijania umiejętności moich uczniów.", firstNames[i], lastNames[i]),
-			Rating:      3.5 + float64(i%3)*0.5,
-			Levels:      pq.StringArray(levelsOptions[i]), // Use pq.StringArray to ensure proper conversion.
+			// Description remains as a longer bio.
+			Description: fmt.Sprintf("Cześć, jestem %s %s. Mam wieloletnie doświadczenie w nauczaniu i specjalizuję się w %s. Moim celem jest inspirowanie uczniów do osiągania sukcesów.",
+				firstNames[i], lastNames[i], subjectsOptions[i][0]),
+			Rating:   3.5 + float64(i%3)*0.5,
+			Levels:   pq.StringArray(levelsOptions[i]),
+			Subjects: pq.StringArray(subjectsOptions[i]),
+			// New fields for creative data.
+			Quote: quotes[i],
+			Price: tutorPrice,
 		}
 
+		// Create or retrieve the tutor based on unique email.
 		if err := db.FirstOrCreate(&tutor, models.User{Email: tutor.Email}).Error; err != nil {
 			return fmt.Errorf("failed to create/find tutor %d: %w", i+1, err)
 		}
@@ -86,22 +126,22 @@ func Seed(db *gorm.DB) error {
 		models.LessonStatusFailed,
 	}
 
-	subjects := []struct {
+	lessonSubjects := []struct {
 		Title       string
 		Description string
 	}{
 		{"Algebra Introduction", "This lesson covers the basics of algebra including linear equations, variables, and problem-solving techniques."},
-		{"Physics Basics", "An in-depth introduction to Newton’s laws, kinematics, and the fundamentals of mechanics with practical experiments."},
-		{"Chemistry: The Periodic Table", "Explore atomic structures, chemical bonds, and the organization of elements in the periodic table."},
-		{"World History Overview", "Discuss major global events, cultural revolutions, and historical milestones that have shaped modern society."},
+		{"Physics Basics", "An in-depth introduction to Newton’s laws, kinematics, and fundamentals of mechanics with practical experiments."},
+		{"Chemistry: The Periodic Table", "Explore atomic structures, chemical bonds, and the organization of elements."},
+		{"World History Overview", "Discuss major global events, cultural revolutions, and historical milestones."},
 		{"Biology: Genetics", "Learn about DNA, genetic inheritance, and molecular biology through interactive examples."},
-		{"Computer Science Fundamentals", "An introduction to algorithms, data structures, and computational thinking with hands-on coding exercises."},
-		{"Philosophy 101", "Examine major philosophical theories, influential thinkers, and the evolution of critical reasoning."},
-		{"Music Theory", "Discover scales, chord progressions, and rhythm structures that form the foundation of musical composition."},
+		{"Computer Science Fundamentals", "An introduction to algorithms, data structures, and coding with hands-on exercises."},
+		{"Philosophy 101", "Examine major philosophical theories and influential thinkers in a critical discussion."},
+		{"Music Theory", "Discover scales, chord progressions, and rhythm structures foundational to musical composition."},
 		{"Art & Painting", "Learn about color theory, composition, and creative techniques for artistic expression."},
-		{"English Literature", "Analyze important literary works, writing styles, and methods for literary criticism in depth."},
-		{"Advanced Algebra", "Dive deeper into algebra with complex equations, polynomial functions, and advanced problem-solving strategies."},
-		{"Calculus I", "Understand limits, derivatives, and introductory integrals with practical, real-world examples."},
+		{"English Literature", "Analyze important literary works and methods for literary criticism in depth."},
+		{"Advanced Algebra", "Dive deeper into algebra with complex equations, polynomial functions, and advanced strategies."},
+		{"Calculus I", "Understand limits, derivatives, and introductory integrals with practical examples."},
 	}
 
 	now := time.Now()
@@ -113,8 +153,8 @@ func Seed(db *gorm.DB) error {
 			statusIndex := (i*lessonsPerTutor + j) % len(statuses)
 			chosenStatus := statuses[statusIndex]
 
-			subjectIndex := (i*lessonsPerTutor + j) % len(subjects)
-			chosenSubject := subjects[subjectIndex]
+			subjectIndex := (i*lessonsPerTutor + j) % len(lessonSubjects)
+			chosenSubject := lessonSubjects[subjectIndex]
 
 			// Offset time so lessons don't overlap.
 			offsetHours := (i * 10) + (j * 2)
@@ -124,8 +164,8 @@ func Seed(db *gorm.DB) error {
 			lesson := models.Lesson{
 				TutorID:     tutor.ID,
 				Students:    []models.User{student},
-				Title:       chosenSubject.Title,       // Only the lesson topic.
-				Description: chosenSubject.Description, // Detailed description.
+				Title:       chosenSubject.Title,
+				Description: chosenSubject.Description,
 				StartTime:   start,
 				EndTime:     end,
 				Status:      chosenStatus,

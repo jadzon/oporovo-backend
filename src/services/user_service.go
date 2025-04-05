@@ -14,6 +14,7 @@ type UserService interface {
 	GetUserFromAccessToken(token string) (models.User, error)
 	GetUserFromRefreshToken(refreshToken string) (models.User, error)
 	UserFromDiscord(discordID, username, email, avatar, discriminator string) (models.User, error)
+	GetTutors(filters models.TutorFilters) ([]models.User, int64, error)
 }
 type userService struct {
 	userRepository repositories.UserRepository
@@ -104,4 +105,19 @@ func (s *userService) UserFromDiscord(discordID, username, email, avatar, discri
 	//}
 
 	return user, nil
+}
+
+// GetTutors returns tutors matching the provided filters.
+func (s *userService) GetTutors(filters models.TutorFilters) ([]models.User, int64, error) {
+	// Pass the filters to the repository.
+	tutors, total, err := s.userRepository.GetTutors(models.TutorFilters{
+		Page:    filters.Page,
+		Limit:   filters.Limit,
+		Subject: filters.Subject,
+		Level:   filters.Level,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return tutors, total, nil
 }

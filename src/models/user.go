@@ -29,11 +29,14 @@ type User struct {
 	DateOfBirth   string    `json:"date_of_birth"`
 	Role          string    `json:"role" gorm:"type:varchar(20);not null;default:'student'"`
 	Description   string    `json:"description" gorm:"type:text"`
+	Quote         string    `json:"quote"`
 	Avatar        string    `json:"avatar"`
 
 	// New fields:
-	Rating float64        `json:"rating"` // For tutors, e.g. 4.5 out of 5
-	Levels pq.StringArray `json:"levels" gorm:"type:text[]"`
+	Rating   float64        `json:"rating"` // For tutors, e.g. 4.5 out of 5
+	Price    float64        `json:"price"`
+	Levels   pq.StringArray `json:"levels" gorm:"type:text[]"`
+	Subjects pq.StringArray `json:"subjects" gorm:"type:text[]"`
 }
 
 // RetrieveAvatarURL constructs the URL to the user's Discord avatar.
@@ -66,6 +69,7 @@ type StudentDTO struct {
 	FirstName   string    `json:"first_name"`
 	LastName    string    `json:"last_name"`
 	Description string    `json:"description"`
+	Quote       string    `json:"quote"`
 	CreatedAt   time.Time `json:"created_at"`
 	DiscordID   string    `json:"discord_id"`
 	DateOfBirth string    `json:"date_of_birth"`
@@ -75,7 +79,9 @@ type StudentDTO struct {
 // TutorDTO extends StudentDTO with tutor-specific fields.
 type TutorDTO struct {
 	StudentDTO
-	Levels []string `json:"levels"`
+	Levels   []string `json:"levels"`
+	Subjects []string `json:"subjects"`
+	Price    float64  `json:"price"`
 }
 
 // ToStudentDTO converts a User model to a StudentDTO.
@@ -89,6 +95,7 @@ func (u *User) ToStudentDTO() StudentDTO {
 		FirstName:   u.FirstName,
 		LastName:    u.LastName,
 		Description: u.Description,
+		Quote:       u.Quote,
 		CreatedAt:   u.CreatedAt,
 		DiscordID:   u.DiscordID,
 		DateOfBirth: u.DateOfBirth,
@@ -101,5 +108,14 @@ func (u *User) ToTutorDTO() TutorDTO {
 	return TutorDTO{
 		StudentDTO: u.ToStudentDTO(),
 		Levels:     u.Levels,
+		Subjects:   u.Subjects,
+		Price:      u.Price,
 	}
+}
+
+type TutorFilters struct {
+	Page    int
+	Limit   int
+	Subject string
+	Level   string
 }
