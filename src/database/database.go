@@ -37,7 +37,8 @@ func GetDB(user, password, name string) (*gorm.DB, error) {
 	// Add all models for migration
 	err = db.AutoMigrate(
 		&models.User{},
-		&models.Lesson{}, // New model
+		&models.Lesson{},
+		&models.Course{},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to automigrate: %w", err)

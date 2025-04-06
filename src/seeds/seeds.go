@@ -2,32 +2,33 @@ package seeds
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lib/pq" // Ensure this is imported
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 
 	"vibely-backend/src/models"
 )
 
 func Seed(db *gorm.DB) error {
-	// 1) Retrieve an existing Student with the fixed ID.
+	// ------------------------------
+	// 1. Retrieve the fixed student.
+	// ------------------------------
 	studentUUIDStr := "8e686fcf-3849-4efd-8e22-16280d3d310f"
 	studentUUID, err := uuid.Parse(studentUUIDStr)
 	if err != nil {
-		return fmt.Errorf("failed to parse student UUID: %w", err)
+		return fmt.Errorf("error parsing student UUID: %w", err)
 	}
-
 	var student models.User
 	if err := db.First(&student, "id = ?", studentUUID).Error; err != nil {
-		return fmt.Errorf("failed to find student with ID %s: %w", studentUUIDStr, err)
+		return fmt.Errorf("student not found (ID %s): %w", studentUUIDStr, err)
 	}
 
-	// 2) Create multiple Tutors (10 in this example) with richer, realistic details.
-	var tutors []models.User
-
-	// Realistic sample data arrays.
+	// ------------------------------
+	// 2. Create 10 tutors.
+	// ------------------------------
 	firstNames := []string{"Michał", "Anna", "Paweł", "Katarzyna", "Tomasz", "Magdalena", "Grzegorz", "Joanna", "Piotr", "Ewa"}
 	lastNames := []string{"Kowalski", "Nowak", "Wiśniewski", "Wójcik", "Kowalczyk", "Kamińska", "Lewandowski", "Zielińska", "Szymański", "Woźniak"}
 	discordHandles := []string{
@@ -54,134 +55,267 @@ func Seed(db *gorm.DB) error {
 		{"Liceum", "Studia"},
 		{"Studia"},
 	}
-	// New subjects options for tutors.
 	subjectsOptions := [][]string{
 		{"Matematyka", "Fizyka"},
 		{"Chemia", "Biologia"},
 		{"Język Polski", "Język Angielski"},
 		{"Historia", "Geografia"},
 		{"Informatyka", "Matematyka"},
-		{"Chemia", "Fizyka"},
-		{"Biologia", "Język Polski"},
-		{"Historia", "Informatyka"},
-		{"Matematyka", "Chemia"},
-		{"Fizyka", "Biologia"},
+		{"Sztuka", "Muzyka"},
+		{"Ekonomia", "Statystyka"},
+		{"Biologia", "Chemia"},
+		{"Fizyka", "Astronomia"},
+		{"Niemiecki", "Francuski"},
 	}
-	// New inspirational quotes for tutors.
 	quotes := []string{
-		"I believe in unlocking every student's potential.",
-		"Teaching is my passion and life's work.",
-		"I strive to inspire curiosity and learning.",
-		"Education is the key to success!",
-		"Let's learn together and grow.",
-		"Every lesson is a step toward success.",
-		"Knowledge shared is knowledge multiplied.",
-		"I'm here to guide you on your learning journey.",
-		"Passionate about making learning fun.",
-		"Empowering students one lesson at a time.",
+		"Wierzę w odkrywanie pełnego potencjału każdego ucznia.",
+		"Nauczanie to moja pasja i praca życia.",
+		"Staram się inspirować ciekawość i chęć nauki.",
+		"Edukacja jest kluczem do sukcesu!",
+		"Każda lekcja to krok w kierunku sukcesu.",
+		"Wiedza dzielona jest wiedzą mnożoną.",
+		"Inspiracja i nauka idą w parze.",
+		"Uczmy się razem i rozwijajmy.",
+		"Twoja edukacja to inwestycja w przyszłość.",
+		"Dążę do tego, by nauka była przyjemnością.",
 	}
 
-	// Set prices creatively (e.g., 50 + (i%5)*15 gives values between 50 and 110 zł).
-	var tutorPrice float64
-
+	rand.Seed(time.Now().UnixNano())
+	var tutors []models.User
 	for i := 0; i < 10; i++ {
-		// Generate a realistic username: first name + first letter of last name.
-		username := fmt.Sprintf("%s%c", firstNames[i], lastNames[i][0])
-		tutorPrice = 50.0 + float64(i%5)*15.0
-
-		// Create a tutor with enriched data.
 		tutor := models.User{
 			Email:       fmt.Sprintf("tutor%d@example.com", i+1),
-			Username:    username,
+			Username:    fmt.Sprintf("%s%c", firstNames[i], lastNames[i][0]),
 			Role:        models.UserRoleTutor,
 			DiscordID:   discordHandles[i],
 			FirstName:   firstNames[i],
 			LastName:    lastNames[i],
 			DateOfBirth: "1985-05-15",
-			// Description remains as a longer bio.
-			Description: fmt.Sprintf("Cześć, jestem %s %s. Mam wieloletnie doświadczenie w nauczaniu i specjalizuję się w %s. Moim celem jest inspirowanie uczniów do osiągania sukcesów.",
+			Description: fmt.Sprintf("Cześć, jestem %s %s. Mam doświadczenie w %s.",
 				firstNames[i], lastNames[i], subjectsOptions[i][0]),
-			Rating:   3.5 + float64(i%3)*0.5,
+			Rating:   4.0,
 			Levels:   pq.StringArray(levelsOptions[i]),
 			Subjects: pq.StringArray(subjectsOptions[i]),
-			// New fields for creative data.
-			Quote: quotes[i],
-			Price: tutorPrice,
+			Quote:    quotes[i],
+			Price:    50.0 + float64(i)*10.0,
 		}
-
-		// Create or retrieve the tutor based on unique email.
 		if err := db.FirstOrCreate(&tutor, models.User{Email: tutor.Email}).Error; err != nil {
-			return fmt.Errorf("failed to create/find tutor %d: %w", i+1, err)
+			return fmt.Errorf("error creating/finding Tutor %d: %w", i+1, err)
 		}
 		tutors = append(tutors, tutor)
 	}
 
-	// 3) Define statuses and detailed lesson topics.
-	statuses := []string{
-		models.LessonStatusScheduled,
-		models.LessonStatusConfirmed,
-		models.LessonStatusInProgress,
-		models.LessonStatusDone,
-		models.LessonStatusCancelled,
-		models.LessonStatusFailed,
-	}
-
+	// ------------------------------
+	// 3. Create standalone lessons for each tutor (for the fixed student)
+	// with varying statuses. For these lessons, leave CourseID empty (nil).
+	// ------------------------------
 	lessonSubjects := []struct {
 		Title       string
 		Description string
 	}{
-		{"Algebra Introduction", "This lesson covers the basics of algebra including linear equations, variables, and problem-solving techniques."},
-		{"Physics Basics", "An in-depth introduction to Newton’s laws, kinematics, and fundamentals of mechanics with practical experiments."},
-		{"Chemistry: The Periodic Table", "Explore atomic structures, chemical bonds, and the organization of elements."},
-		{"World History Overview", "Discuss major global events, cultural revolutions, and historical milestones."},
-		{"Biology: Genetics", "Learn about DNA, genetic inheritance, and molecular biology through interactive examples."},
-		{"Computer Science Fundamentals", "An introduction to algorithms, data structures, and coding with hands-on exercises."},
-		{"Philosophy 101", "Examine major philosophical theories and influential thinkers in a critical discussion."},
-		{"Music Theory", "Discover scales, chord progressions, and rhythm structures foundational to musical composition."},
-		{"Art & Painting", "Learn about color theory, composition, and creative techniques for artistic expression."},
-		{"English Literature", "Analyze important literary works and methods for literary criticism in depth."},
-		{"Advanced Algebra", "Dive deeper into algebra with complex equations, polynomial functions, and advanced strategies."},
-		{"Calculus I", "Understand limits, derivatives, and introductory integrals with practical examples."},
+		{"Wstęp do algebry", "Podstawy algebry, równania liniowe."},
+		{"Podstawy fizyki", "Wprowadzenie do praw Newtona."},
+		{"Chemia: Układ okresowy", "Budowa atomu i pierwiastków."},
+		{"Historia", "Omówienie głównych wydarzeń."},
+		{"Biologia", "Wprowadzenie do dziedziczenia cech."},
 	}
-
-	now := time.Now()
-	var allLessons []models.Lesson
-	lessonsPerTutor := 3 // Total 30 lessons
-
+	// We'll create 3 lessons per tutor.
+	lessonsPerTutor := 3
+	nowTime := time.Now()
+	var standaloneLessons []models.Lesson
 	for i, tutor := range tutors {
 		for j := 0; j < lessonsPerTutor; j++ {
-			statusIndex := (i*lessonsPerTutor + j) % len(statuses)
-			chosenStatus := statuses[statusIndex]
-
-			subjectIndex := (i*lessonsPerTutor + j) % len(lessonSubjects)
-			chosenSubject := lessonSubjects[subjectIndex]
-
-			// Offset time so lessons don't overlap.
-			offsetHours := (i * 10) + (j * 2)
-			start := now.Add(time.Duration(offsetHours) * time.Hour)
-			end := start.Add(time.Hour)
-
+			statusIndex := (i*lessonsPerTutor + j) % 6
+			var status string
+			var start, end time.Time
+			switch statusIndex {
+			case 0:
+				status = models.LessonStatusScheduled // future date
+				start = nowTime.Add(2 * time.Hour)
+				end = start.Add(time.Hour)
+			case 1:
+				status = models.LessonStatusConfirmed // future date
+				start = nowTime.Add(1 * time.Hour)
+				end = start.Add(time.Hour)
+			case 2:
+				status = models.LessonStatusInProgress // around now
+				start = nowTime.Add(-15 * time.Minute)
+				end = nowTime.Add(45 * time.Minute)
+			case 3:
+				status = models.LessonStatusDone // past
+				start = nowTime.Add(-2 * time.Hour)
+				end = start.Add(time.Hour)
+			case 4:
+				status = models.LessonStatusFailed // past
+				start = nowTime.Add(-3 * time.Hour)
+				end = start.Add(time.Hour)
+			case 5:
+				status = models.LessonStatusCancelled // past
+				start = nowTime.Add(-4 * time.Hour)
+				end = start.Add(time.Hour)
+			}
+			idx := (i*lessonsPerTutor + j) % len(lessonSubjects)
+			subj := lessonSubjects[idx]
 			lesson := models.Lesson{
 				TutorID:     tutor.ID,
 				Students:    []models.User{student},
-				Title:       chosenSubject.Title,
-				Description: chosenSubject.Description,
+				Title:       subj.Title,
+				Description: subj.Description,
+				Subject:     subjectsOptions[i%len(subjectsOptions)][0],
+				Level:       levelsOptions[i%len(levelsOptions)][0],
 				StartTime:   start,
 				EndTime:     end,
-				Status:      chosenStatus,
+				Status:      status,
+				// Leave CourseID empty (nil) for standalone lessons.
+				CourseID: nil,
 			}
-
-			allLessons = append(allLessons, lesson)
+			standaloneLessons = append(standaloneLessons, lesson)
 		}
 	}
+	if err := db.Create(&standaloneLessons).Error; err != nil {
+		return fmt.Errorf("error creating standalone lessons: %w", err)
+	}
 
-	// 4) Insert all lessons in a batch.
-	if err := db.Create(&allLessons).Error; err != nil {
-		return fmt.Errorf("failed to create lessons: %w", err)
+	// ------------------------------
+	// 4. Create a first real course and fetch it so that its ID is set.
+	// ------------------------------
+	course1 := models.Course{
+		ID:          uuid.New(),
+		TutorID:     tutors[0].ID,
+		Tutor:       tutors[0],
+		Name:        "Mathematics Mastery",
+		Description: "A comprehensive course on mathematics fundamentals.",
+		Subject:     "Matematyka",
+		Level:       "Liceum",
+		Students:    []models.User{student},
+		CreatedAt:   nowTime,
+	}
+	if err := db.Create(&course1).Error; err != nil {
+		return fmt.Errorf("error creating course1: %w", err)
+	}
+	if err := db.First(&course1, "id = ?", course1.ID).Error; err != nil {
+		return fmt.Errorf("error fetching course1 after creation: %w", err)
+	}
+
+	var course1Lessons []models.Lesson
+	for i := 0; i < 5; i++ {
+		statusIndex := i % 6
+		var status string
+		var start, end time.Time
+		switch statusIndex {
+		case 0:
+			status = models.LessonStatusScheduled
+			start = nowTime.Add(2 * time.Hour)
+			end = start.Add(time.Hour)
+		case 1:
+			status = models.LessonStatusConfirmed
+			start = nowTime.Add(1 * time.Hour)
+			end = start.Add(time.Hour)
+		case 2:
+			status = models.LessonStatusInProgress
+			start = nowTime.Add(-15 * time.Minute)
+			end = nowTime.Add(45 * time.Minute)
+		case 3:
+			status = models.LessonStatusDone
+			start = nowTime.Add(-2 * time.Hour)
+			end = start.Add(time.Hour)
+		case 4:
+			status = models.LessonStatusFailed
+			start = nowTime.Add(-3 * time.Hour)
+			end = start.Add(time.Hour)
+		case 5:
+			status = models.LessonStatusCancelled
+			start = nowTime.Add(-4 * time.Hour)
+			end = start.Add(time.Hour)
+		}
+		lesson := models.Lesson{
+			TutorID:     tutors[0].ID,
+			Title:       fmt.Sprintf("Mathematics Lesson %d", i+1),
+			Description: fmt.Sprintf("Description for Mathematics Lesson %d", i+1),
+			Subject:     "Matematyka",
+			Level:       "Liceum",
+			StartTime:   start,
+			EndTime:     end,
+			Status:      status,
+			// Set CourseID to course1's ID.
+			CourseID: &course1.ID,
+			Students: []models.User{student},
+		}
+		course1Lessons = append(course1Lessons, lesson)
+	}
+	if err := db.Create(&course1Lessons).Error; err != nil {
+		return fmt.Errorf("error creating lessons for course1: %w", err)
+	}
+
+	// ------------------------------
+	// 5. Create a second course (without any student) and add lessons.
+	// ------------------------------
+	course2 := models.Course{
+		ID:          uuid.New(),
+		TutorID:     tutors[1].ID,
+		Tutor:       tutors[1],
+		Name:        "Physics Fundamentals",
+		Description: "An introductory course on physics covering essential concepts.",
+		Subject:     "Fizyka",
+		Level:       "Liceum",
+		CreatedAt:   nowTime,
+	}
+	if err := db.Create(&course2).Error; err != nil {
+		return fmt.Errorf("error creating course2: %w", err)
+	}
+	if err := db.First(&course2, "id = ?", course2.ID).Error; err != nil {
+		return fmt.Errorf("error fetching course2 after creation: %w", err)
+	}
+	var course2Lessons []models.Lesson
+	for i := 0; i < 5; i++ {
+		statusIndex := i % 6
+		var status string
+		var start, end time.Time
+		switch statusIndex {
+		case 0:
+			status = models.LessonStatusScheduled
+			start = nowTime.Add(2 * time.Hour)
+			end = start.Add(time.Hour)
+		case 1:
+			status = models.LessonStatusConfirmed
+			start = nowTime.Add(1 * time.Hour)
+			end = start.Add(time.Hour)
+		case 2:
+			status = models.LessonStatusInProgress
+			start = nowTime.Add(-15 * time.Minute)
+			end = nowTime.Add(45 * time.Minute)
+		case 3:
+			status = models.LessonStatusDone
+			start = nowTime.Add(-2 * time.Hour)
+			end = start.Add(time.Hour)
+		case 4:
+			status = models.LessonStatusFailed
+			start = nowTime.Add(-3 * time.Hour)
+			end = start.Add(time.Hour)
+		case 5:
+			status = models.LessonStatusCancelled
+			start = nowTime.Add(-4 * time.Hour)
+			end = start.Add(time.Hour)
+		}
+		lesson := models.Lesson{
+			TutorID:     tutors[1].ID,
+			Title:       fmt.Sprintf("Physics Lesson %d", i+1),
+			Description: fmt.Sprintf("Description for Physics Lesson %d", i+1),
+			Subject:     "Fizyka",
+			Level:       "Liceum",
+			StartTime:   start,
+			EndTime:     end,
+			Status:      status,
+			// Set CourseID to course2's ID.
+			CourseID: &course2.ID,
+			// No students assigned.
+		}
+		course2Lessons = append(course2Lessons, lesson)
+	}
+	if err := db.Create(&course2Lessons).Error; err != nil {
+		return fmt.Errorf("error creating lessons for course2: %w", err)
 	}
 
 	fmt.Println("==== SEEDING SUCCESS ====")
-	fmt.Printf("Created %d tutors and %d total lessons for student (ID: %s).\n",
-		len(tutors), len(allLessons), studentUUIDStr)
 	return nil
 }

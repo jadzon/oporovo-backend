@@ -14,6 +14,7 @@ func Setup(app *app.Application) *gin.Engine {
 	userHandler := handlers.NewUserHandler(app)
 	lessonHandler := handlers.NewLessonHandler(app)
 	tutorHandler := handlers.NewTutorHandler(app)
+	courseHandler := handlers.NewCourseHandler(app)
 
 	// Apply Global Middleware
 	router.Use(middleware.EnableCORS)
@@ -47,6 +48,11 @@ func Setup(app *app.Application) *gin.Engine {
 
 		authorized.GET("/user/:userID/lessons", lessonHandler.GetLessonsForUser)
 		authorized.GET("/user/:userID/tutors", lessonHandler.GetTutorsForUser)
+
+		authorized.POST("/courses", courseHandler.CreateCourse)
+		authorized.GET("/courses/:courseID", courseHandler.GetCourse)
+		authorized.GET("/courses", courseHandler.GetCourses)
+		authorized.GET("/user/:userID/courses", courseHandler.GetCoursesForUser)
 	}
 	return router
 }
