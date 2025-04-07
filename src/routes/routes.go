@@ -37,7 +37,7 @@ func Setup(app *app.Application) *gin.Engine {
 	{
 		authorized.GET("/user", userHandler.HelloAuthorized)
 		authorized.GET("/user/me", userHandler.GetUser)
-		router.POST("/lessons", lessonHandler.CreateLesson)
+		authorized.POST("/lessons", lessonHandler.CreateLesson)
 		router.GET("/lessons/:lessonID", lessonHandler.GetLesson)
 		router.PATCH("/lessons/:lessonID/confirm", lessonHandler.ConfirmLesson)
 		router.PATCH("/lessons/:lessonID/start", lessonHandler.StartLesson)

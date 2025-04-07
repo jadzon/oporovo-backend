@@ -27,7 +27,9 @@ type createLessonRequest struct {
 	StudentIDs  []string `json:"student_ids"`
 	Title       string   `json:"title"`
 	Description string   `json:"description"`
-	StartTime   string   `json:"start_time"` // ISO8601, e.g., "2025-03-04T15:00:00Z"
+	Subject     string   `json:"subject"` // Added subject field
+	Level       string   `json:"level"`   // Added level field
+	StartTime   string   `json:"start_time"`
 	EndTime     string   `json:"end_time"`
 }
 
@@ -81,6 +83,8 @@ func (h *LessonHandler) CreateLesson(c *gin.Context) {
 		Students:    studentUsers,
 		Title:       req.Title,
 		Description: req.Description,
+		Subject:     req.Subject, // Assign subject field
+		Level:       req.Level,   // Assign level field
 		StartTime:   start,
 		EndTime:     end,
 		// We'll set Status in the service (to "scheduled").
