@@ -15,6 +15,7 @@ type Application struct {
 	AuthService   services.AuthService
 	LessonService services.LessonService
 	CourseService services.CourseService
+	TAService     services.TutorAvailabilityService
 }
 
 func New(cfg config.Config) (*Application, error) {
@@ -30,6 +31,8 @@ func New(cfg config.Config) (*Application, error) {
 	lessonService := services.NewLessonService(lessonRepository)
 	courseRepository := repositories.NewCourseRepository(db)
 	courseService := services.NewCourseService(courseRepository, lessonService)
+	tutorAvailabilityRepository := repositories.NewTutorAvailabilityRepository(db)
+	tutorAvailabilityService := services.NewTutorAvailabilityService(tutorAvailabilityRepository, userRepository)
 	return &Application{
 		Config:        cfg,
 		DB:            db,
@@ -37,5 +40,6 @@ func New(cfg config.Config) (*Application, error) {
 		AuthService:   authService,
 		LessonService: lessonService,
 		CourseService: courseService,
+		TAService:     tutorAvailabilityService,
 	}, nil
 }

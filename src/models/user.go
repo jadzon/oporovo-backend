@@ -119,3 +119,33 @@ type TutorFilters struct {
 	Subject string
 	Level   string
 }
+
+// TutorWeeklySchedule represents a recurring weekly time slot
+type TutorWeeklySchedule struct {
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+	TutorID   uuid.UUID `json:"tutor_id" gorm:"index;not null"`
+	DayOfWeek int       `json:"day_of_week" gorm:"not null"` // 0=Sunday, 1=Monday, etc.
+	StartTime string    `json:"start_time" gorm:"not null"`  // Store as "14:00" format
+	EndTime   string    `json:"end_time" gorm:"not null"`    // Store as "17:00" format
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+// TutorScheduleException represents modifications to the weekly pattern
+type TutorScheduleException struct {
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+	TutorID   uuid.UUID `json:"tutor_id" gorm:"index;not null"`
+	Date      time.Time `json:"date" gorm:"not null;index"`
+	StartTime string    `json:"start_time"` // Optional - if provided, this is an added slot
+	EndTime   string    `json:"end_time"`   // Optional - if provided, this is an added slot
+	IsRemoval bool      `json:"is_removal"` // If true, indicates this day/time is unavailable
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+// AvailabilitySlot represents a calculated available time slot
+type AvailabilitySlot struct {
+	Date      time.Time `json:"date"`
+	StartTime string    `json:"start_time"`
+	EndTime   string    `json:"end_time"`
+}

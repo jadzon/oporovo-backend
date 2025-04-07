@@ -29,6 +29,8 @@ func Setup(app *app.Application) *gin.Engine {
 		router.GET("/api/auth/discord/callback", userHandler.DiscordCallback)
 		//TODO:
 		router.POST("/api/token/refresh-token", userHandler.RefreshTokens)
+
+		publicAPI.GET("/tutors/:tutorID/availability", tutorHandler.GetAvailability)
 		//router.GET("/api/auth/logout", userHandler.Logout)
 	}
 	// Protected API Routes
@@ -54,6 +56,15 @@ func Setup(app *app.Application) *gin.Engine {
 		authorized.GET("/courses", courseHandler.GetCourses)
 		authorized.GET("/user/:userID/courses", courseHandler.GetCoursesForUser)
 		authorized.POST("/courses/:courseID/enroll", courseHandler.EnrollInCourse)
+
+		authorized.POST("/tutors/:tutorID/weekly-schedules", tutorHandler.AddWeeklySchedule)
+		authorized.GET("/tutors/:tutorID/weekly-schedules", tutorHandler.GetWeeklySchedule)
+		authorized.PUT("/weekly-schedules/:scheduleID", tutorHandler.UpdateWeeklySchedule)
+		authorized.DELETE("/weekly-schedules/:scheduleID", tutorHandler.DeleteWeeklySchedule)
+
+		authorized.POST("/tutors/:tutorID/exceptions", tutorHandler.AddException)
+		authorized.GET("/tutors/:tutorID/exceptions", tutorHandler.GetExceptions)
+
 	}
 	return router
 }

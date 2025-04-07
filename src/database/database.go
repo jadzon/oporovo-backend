@@ -35,10 +35,13 @@ func GetDB(user, password, name string) (*gorm.DB, error) {
 	sqlDB.SetConnMaxLifetime(5 * time.Minute)
 
 	// Add all models for migration
+	// In database/database.go
 	err = db.AutoMigrate(
 		&models.User{},
 		&models.Lesson{},
 		&models.Course{},
+		&models.TutorWeeklySchedule{},
+		&models.TutorScheduleException{},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to automigrate: %w", err)
