@@ -154,3 +154,32 @@ func (h *CourseHandler) GetCoursesForUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, dtos)
 }
+func (h *CourseHandler) EnrollInCourse(c *gin.Context) {
+	courseIDStr := c.Param("courseID")
+	courseID, err := uuid.Parse(courseIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid course ID"})
+		return
+	}
+
+	// Retrieve the authenticated user from context (set by middleware).
+	userVal, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	currentUser, ok := userVal.(models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to parse user"})
+		return
+	}
+
+	updatedCourse, err := h.App.CourseService.EnrollStudent(courseID, currentUser)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedCourse.ToDTO())
+}

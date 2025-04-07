@@ -24,6 +24,7 @@ type LessonService interface {
 	PostponeLesson(lessonID uuid.UUID, newStart, newEnd time.Time) (models.Lesson, error)
 	GetLessonsForUser(userID uuid.UUID) ([]models.Lesson, error)
 	GetTutorsForUser(userID uuid.UUID) ([]models.User, error)
+	EnrollStudent(lessonID uuid.UUID, student models.User) error
 }
 
 type lessonService struct {
@@ -165,4 +166,7 @@ func (s *lessonService) GetLessonsForUser(userID uuid.UUID) ([]models.Lesson, er
 
 func (s *lessonService) GetTutorsForUser(userID uuid.UUID) ([]models.User, error) {
 	return s.repo.GetTutorsForUser(userID)
+}
+func (s *lessonService) EnrollStudent(lessonID uuid.UUID, student models.User) error {
+	return s.repo.EnrollStudent(lessonID, student)
 }

@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,6 +19,7 @@ type CourseRepository interface {
 	UpdateCourse(course *models.Course) error
 	GetCourses(subject, level string, page, limit int) ([]models.Course, error)
 	GetCoursesForUser(userID uuid.UUID) ([]models.Course, error)
+	EnrollStudent(courseID uuid.UUID, student models.User) error
 }
 
 type courseRepository struct {
@@ -102,4 +104,24 @@ func (r *courseRepository) GetCoursesForUser(userID uuid.UUID) ([]models.Course,
 		Or("id IN (SELECT course_id FROM course_students WHERE user_id = ?)", userID).
 		Find(&courses).Error
 	return courses, err
+}
+func (r *courseRepository) EnrollStudent(courseID uuid.UUID, student models.User) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var course models.Course
+	if err := r.db.WithContext(ctx).Preload("Students").First(&course, "id = ?", courseID).Error; err != nil {
+		return err
+	}
+
+	// Check if the student is already enrolled.
+	for _, s := range course.Students {
+		if s.ID == student.ID {
+			return errors.New("student already enrolled")
+		}
+	}
+
+	// Append the student and update the record.
+	course.Students = append(course.Students, student)
+	return r.db.WithContext(ctx).Save(&course).Error
 }

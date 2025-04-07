@@ -17,6 +17,7 @@ type LessonRepository interface {
 	UpdateLesson(lesson *models.Lesson) error
 	GetLessonsForUser(userID uuid.UUID) ([]models.Lesson, error)
 	GetTutorsForUser(userID uuid.UUID) ([]models.User, error)
+	EnrollStudent(lessonID uuid.UUID, student models.User) error
 }
 
 type lessonRepository struct {
@@ -109,4 +110,24 @@ func (r *lessonRepository) GetTutorsForUser(userID uuid.UUID) ([]models.User, er
 		tutors = append(tutors, tutor)
 	}
 	return tutors, nil
+}
+func (r *lessonRepository) EnrollStudent(lessonID uuid.UUID, student models.User) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Assuming Lesson model has a Students association.
+	var lesson models.Lesson
+	if err := r.db.WithContext(ctx).Preload("Students").First(&lesson, "id = ?", lessonID).Error; err != nil {
+		return err
+	}
+
+	// Check if the student is already enrolled (optional).
+	for _, s := range lesson.Students {
+		if s.ID == student.ID {
+			return nil // Already enrolled; nothing to do.
+		}
+	}
+
+	// Append student to lesson's Students association.
+	return r.db.WithContext(ctx).Model(&lesson).Association("Students").Append(&student)
 }

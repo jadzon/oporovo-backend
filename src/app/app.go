@@ -29,7 +29,7 @@ func New(cfg config.Config) (*Application, error) {
 	lessonRepository := repositories.NewLessonRepository(db)
 	lessonService := services.NewLessonService(lessonRepository)
 	courseRepository := repositories.NewCourseRepository(db)
-	courseService := services.NewCourseService(courseRepository)
+	courseService := services.NewCourseService(courseRepository, lessonService)
 	return &Application{
 		Config:        cfg,
 		DB:            db,

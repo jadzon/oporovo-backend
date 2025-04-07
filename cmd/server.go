@@ -6,7 +6,6 @@ import (
 	"vibely-backend/src/app"
 	"vibely-backend/src/config"
 	"vibely-backend/src/routes"
-	"vibely-backend/src/seeds"
 )
 
 func main() {
@@ -25,9 +24,9 @@ func main() {
 		return
 	}
 	//seed
-	if err := seeds.Seed(application.DB); err != nil {
-		log.Fatalf("Seeding error: %v", err)
-	}
+	//if err := seeds.Seed(application.DB); err != nil {
+	//	log.Fatalf("Seeding error: %v", err)
+	//}
 	router := routes.Setup(application)
 	port := ":" + cfg.Port
 	log.Printf("Starting server on port %s...", port)

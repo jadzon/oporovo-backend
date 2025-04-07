@@ -53,6 +53,7 @@ func Setup(app *app.Application) *gin.Engine {
 		authorized.GET("/courses/:courseID", courseHandler.GetCourse)
 		authorized.GET("/courses", courseHandler.GetCourses)
 		authorized.GET("/user/:userID/courses", courseHandler.GetCoursesForUser)
+		authorized.POST("/courses/:courseID/enroll", courseHandler.EnrollInCourse)
 	}
 	return router
 }
