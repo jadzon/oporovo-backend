@@ -18,6 +18,7 @@ type LessonRepository interface {
 	GetLessonsForUser(userID uuid.UUID) ([]models.Lesson, error)
 	GetTutorsForUser(userID uuid.UUID) ([]models.User, error)
 	EnrollStudent(lessonID uuid.UUID, student models.User) error
+	GetLessonsByTutorIDAndDateRange(tutorID uuid.UUID, startDate, endDate time.Time) ([]models.Lesson, error)
 }
 
 type lessonRepository struct {
@@ -130,4 +131,26 @@ func (r *lessonRepository) EnrollStudent(lessonID uuid.UUID, student models.User
 
 	// Append student to lesson's Students association.
 	return r.db.WithContext(ctx).Model(&lesson).Association("Students").Append(&student)
+}
+func (r *lessonRepository) GetLessonsByTutorIDAndDateRange(tutorID uuid.UUID, startDate, endDate time.Time) ([]models.Lesson, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var lessons []models.Lesson
+
+	// Query lessons where:
+	// 1. The tutor is the specified tutor
+	// 2. The lesson is not cancelled
+	// 3. The lesson time overlaps with the date range
+	query := r.db.WithContext(ctx).
+		Where("tutor_id = ?", tutorID).
+		Where("status != ?", models.LessonStatusCancelled).
+		Where("(start_time < ? AND end_time > ?) OR (start_time BETWEEN ? AND ?)",
+			endDate, startDate, startDate, endDate)
+
+	if err := query.Find(&lessons).Error; err != nil {
+		return nil, err
+	}
+
+	return lessons, nil
 }

@@ -25,6 +25,7 @@ type LessonService interface {
 	GetLessonsForUser(userID uuid.UUID) ([]models.Lesson, error)
 	GetTutorsForUser(userID uuid.UUID) ([]models.User, error)
 	EnrollStudent(lessonID uuid.UUID, student models.User) error
+	GetLessonsByTutorIDAndDateRange(tutorID uuid.UUID, startDate, endDate time.Time) ([]models.Lesson, error)
 }
 
 type lessonService struct {
@@ -169,4 +170,7 @@ func (s *lessonService) GetTutorsForUser(userID uuid.UUID) ([]models.User, error
 }
 func (s *lessonService) EnrollStudent(lessonID uuid.UUID, student models.User) error {
 	return s.repo.EnrollStudent(lessonID, student)
+}
+func (s *lessonService) GetLessonsByTutorIDAndDateRange(tutorID uuid.UUID, startDate, endDate time.Time) ([]models.Lesson, error) {
+	return s.repo.GetLessonsByTutorIDAndDateRange(tutorID, startDate, endDate)
 }

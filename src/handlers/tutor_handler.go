@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -300,7 +301,6 @@ func (h *TutorHandler) GetExceptions(c *gin.Context) {
 }
 
 // GetAvailability retrieves a tutor's availability for a date range
-// GetAvailability retrieves a tutor's availability for a date range
 func (h *TutorHandler) GetAvailability(c *gin.Context) {
 	// Get tutor ID from URL parameter
 	tutorIDStr := c.Param("tutorID")
@@ -331,33 +331,194 @@ func (h *TutorHandler) GetAvailability(c *gin.Context) {
 		return
 	}
 
-	// Call service
-	slots, err := h.App.TAService.GetAvailabilityForDateRange(tutorID, startDate, endDate)
+	fmt.Printf("\n=== AVAILABILITY REQUEST ===\n")
+	fmt.Printf("Tutor ID: %s\n", tutorID)
+	fmt.Printf("Date range: %s to %s\n", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+
+	// 1. Get the tutor's availability (which already accounts for exceptions)
+	availableSlots, err := h.App.TAService.GetAvailabilityForDateRange(tutorID, startDate, endDate)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	fmt.Println("GetAvailabilityForDateRange called with:", tutorID)
-	fmt.Println("Date range:", startDate.Format("2006-01-02"), "to", endDate.Format("2006-01-02"))
 
-	// [... existing code ...]
-
-	// Iterate through each day in the date range
-	for date := startDate; date.Before(endDate) || date.Equal(endDate); date = date.AddDate(0, 0, 1) {
-		dayOfWeek := int(date.Weekday())
-		fmt.Printf("Processing date: %s, day of week: %d\n", date.Format("2006-01-02"), dayOfWeek)
-
-		// [... rest of your code ...]
+	fmt.Printf("Initial availability slots (after weekly schedule & exceptions): %d\n", len(availableSlots))
+	for i, slot := range availableSlots {
+		fmt.Printf("Slot %d: %s %s-%s\n", i+1, slot.Date.Format("2006-01-02"), slot.StartTime, slot.EndTime)
 	}
-	
-	// IMPORTANT FIX: Ensure slots is never null in the response
-	if slots == nil {
-		slots = []models.AvailabilitySlot{} // Return empty array instead of null
+
+	// 2. Get the tutor's scheduled lessons
+	lessons, err := h.App.LessonService.GetLessonsByTutorIDAndDateRange(tutorID, startDate, endDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
-	fmt.Println("AVAILABLE SLOTS")
-	fmt.Println(slots)
+
+	fmt.Printf("Found %d lessons in date range\n", len(lessons))
+	for i, lesson := range lessons {
+		fmt.Printf("Lesson %d: ID=%s, Status=%s, Time=%s - %s\n",
+			i+1, lesson.ID, lesson.Status,
+			lesson.StartTime.Format("2006-01-02 15:04"),
+			lesson.EndTime.Format("2006-01-02 15:04"))
+	}
+
+	// 3. Filter/split availability slots that overlap with lessons
+	finalAvailability := filterAvailabilityWithLessons(availableSlots, lessons)
+
+	fmt.Printf("Final availability count: %d slots\n", len(finalAvailability))
+	fmt.Printf("=== END OF PROCESSING ===\n\n")
+
+	// IMPORTANT: Ensure the response is never null
+	if finalAvailability == nil {
+		finalAvailability = []models.AvailabilitySlot{} // Return empty array instead of null
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"tutor_id":        tutorID,
-		"available_slots": slots,
+		"available_slots": finalAvailability,
 	})
+}
+
+// filterAvailabilityWithLessons adjusts availability slots by removing or splitting them
+// when they overlap with scheduled lessons
+func filterAvailabilityWithLessons(slots []models.AvailabilitySlot, lessons []models.Lesson) []models.AvailabilitySlot {
+	if len(lessons) == 0 {
+		fmt.Println("No lessons to filter against, returning all slots")
+		return slots
+	}
+
+	var finalSlots []models.AvailabilitySlot
+
+	fmt.Printf("Processing %d original availability slots against %d lessons\n", len(slots), len(lessons))
+
+	for _, slot := range slots {
+		// Parse slot times to datetime objects
+		slotDate := slot.Date
+
+		// Parse start time
+		startParts := strings.Split(slot.StartTime, ":")
+		if len(startParts) != 2 {
+			fmt.Printf("WARNING: Invalid start time format: %s, skipping slot\n", slot.StartTime)
+			continue
+		}
+		startHour, _ := strconv.Atoi(startParts[0])
+		startMin, _ := strconv.Atoi(startParts[1])
+		slotStart := time.Date(
+			slotDate.Year(), slotDate.Month(), slotDate.Day(),
+			startHour, startMin, 0, 0, slotDate.Location(),
+		)
+
+		// Parse end time
+		endParts := strings.Split(slot.EndTime, ":")
+		if len(endParts) != 2 {
+			fmt.Printf("WARNING: Invalid end time format: %s, skipping slot\n", slot.EndTime)
+			continue
+		}
+		endHour, _ := strconv.Atoi(endParts[0])
+		endMin, _ := strconv.Atoi(endParts[1])
+		slotEnd := time.Date(
+			slotDate.Year(), slotDate.Month(), slotDate.Day(),
+			endHour, endMin, 0, 0, slotDate.Location(),
+		)
+
+		fmt.Printf("Processing slot: %s %s-%s\n", slotDate.Format("2006-01-02"), slot.StartTime, slot.EndTime)
+
+		// Start with the full slot
+		availableRanges := []struct {
+			start time.Time
+			end   time.Time
+		}{
+			{slotStart, slotEnd},
+		}
+
+		// For each lesson, adjust the available ranges
+		for _, lesson := range lessons {
+			if lesson.Status == models.LessonStatusCancelled {
+				fmt.Printf("- Skipping cancelled lesson: %s\n", lesson.ID)
+				continue
+			}
+
+			fmt.Printf("- Checking lesson: %s (%s - %s)\n",
+				lesson.ID,
+				lesson.StartTime.Format("2006-01-02 15:04"),
+				lesson.EndTime.Format("2006-01-02 15:04"),
+			)
+
+			// Create a new list for ranges after processing this lesson
+			var newRanges []struct {
+				start time.Time
+				end   time.Time
+			}
+
+			// Process each existing range against this lesson
+			for _, r := range availableRanges {
+				// No overlap case - keep range as is
+				if lesson.EndTime.Before(r.start) || lesson.StartTime.After(r.end) {
+					fmt.Printf("  - No overlap with range %s-%s\n",
+						r.start.Format("15:04"), r.end.Format("15:04"))
+					newRanges = append(newRanges, r)
+					continue
+				}
+
+				// Handle overlap cases - up to 2 new ranges could be created
+				fmt.Printf("  - Overlap detected with range %s-%s\n",
+					r.start.Format("15:04"), r.end.Format("15:04"))
+
+				// Part before lesson
+				if r.start.Before(lesson.StartTime) {
+					newRange := struct {
+						start time.Time
+						end   time.Time
+					}{r.start, lesson.StartTime}
+					fmt.Printf("  - Adding range before lesson: %s-%s\n",
+						newRange.start.Format("15:04"), newRange.end.Format("15:04"))
+					newRanges = append(newRanges, newRange)
+				}
+
+				// Part after lesson
+				if r.end.After(lesson.EndTime) {
+					newRange := struct {
+						start time.Time
+						end   time.Time
+					}{lesson.EndTime, r.end}
+					fmt.Printf("  - Adding range after lesson: %s-%s\n",
+						newRange.start.Format("15:04"), newRange.end.Format("15:04"))
+					newRanges = append(newRanges, newRange)
+				}
+			}
+
+			// Update availableRanges for next lesson
+			availableRanges = newRanges
+
+			// If no ranges left, we can exit early
+			if len(availableRanges) == 0 {
+				fmt.Printf("  - No available ranges left after processing this lesson\n")
+				break
+			}
+		}
+
+		// Convert remaining time ranges back to AvailabilitySlot format
+		for _, r := range availableRanges {
+			// Only add slots that are at least 15 minutes long (to avoid tiny gaps)
+			minDuration := 15 * time.Minute
+			if r.end.Sub(r.start) < minDuration {
+				fmt.Printf("Skipping too short range: %s-%s (less than 15 minutes)\n",
+					r.start.Format("15:04"), r.end.Format("15:04"))
+				continue
+			}
+
+			// Format the times back to HH:MM strings
+			newSlot := models.AvailabilitySlot{
+				Date:      slot.Date,
+				StartTime: fmt.Sprintf("%02d:%02d", r.start.Hour(), r.start.Minute()),
+				EndTime:   fmt.Sprintf("%02d:%02d", r.end.Hour(), r.end.Minute()),
+			}
+			fmt.Printf("Adding final slot: %s %s-%s\n",
+				newSlot.Date.Format("2006-01-02"), newSlot.StartTime, newSlot.EndTime)
+			finalSlots = append(finalSlots, newSlot)
+		}
+	}
+
+	fmt.Printf("Final slot count after filtering: %d\n", len(finalSlots))
+	return finalSlots
 }
