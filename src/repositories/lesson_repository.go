@@ -17,6 +17,7 @@ type LessonRepository interface {
 	UpdateLesson(lesson *models.Lesson) error
 	GetLessonsForUser(userID uuid.UUID) ([]models.Lesson, error)
 	GetTutorsForUser(userID uuid.UUID) ([]models.User, error)
+	GetStudentsForTutor(tutorID uuid.UUID) ([]models.User, error)
 	EnrollStudent(lessonID uuid.UUID, student models.User) error
 	GetLessonsByTutorIDAndDateRange(tutorID uuid.UUID, startDate, endDate time.Time) ([]models.Lesson, error)
 }
@@ -153,4 +154,36 @@ func (r *lessonRepository) GetLessonsByTutorIDAndDateRange(tutorID uuid.UUID, st
 	}
 
 	return lessons, nil
+}
+
+// GetStudentsForTutor retrieves all unique students who have taken lessons with this tutor
+func (r *lessonRepository) GetStudentsForTutor(tutorID uuid.UUID) ([]models.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var lessons []models.Lesson
+	err := r.db.WithContext(ctx).
+		Model(&models.Lesson{}).
+		Where("tutor_id = ?", tutorID).
+		Preload("Students").
+		Find(&lessons).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a map to deduplicate students
+	studentMap := make(map[uuid.UUID]models.User)
+	for _, lesson := range lessons {
+		for _, student := range lesson.Students {
+			studentMap[student.ID] = student
+		}
+	}
+
+	// Convert map to slice
+	students := make([]models.User, 0, len(studentMap))
+	for _, student := range studentMap {
+		students = append(students, student)
+	}
+
+	return students, nil
 }

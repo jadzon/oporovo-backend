@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"time"
 	"vibely-backend/src/models"
@@ -285,6 +286,11 @@ func (s *tutorAvailabilityService) GetAvailabilityForDateRange(tutorID uuid.UUID
 		return nil, err
 	}
 
+	fmt.Printf("\n==== AVAILABILITY CALCULATION ====\n")
+	fmt.Printf("Tutor ID: %s\n", tutorID)
+	fmt.Printf("Date range: %s to %s\n", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+	fmt.Printf("Found %d weekly schedules and %d exceptions\n", len(weeklySchedules), len(exceptions))
+
 	// Calculate available slots for each day in the range
 	var availableSlots []models.AvailabilitySlot
 
@@ -293,6 +299,8 @@ func (s *tutorAvailabilityService) GetAvailabilityForDateRange(tutorID uuid.UUID
 	for _, exception := range exceptions {
 		dateKey := time.Date(exception.Date.Year(), exception.Date.Month(), exception.Date.Day(), 0, 0, 0, 0, exception.Date.Location())
 		exceptionsByDate[dateKey] = append(exceptionsByDate[dateKey], exception)
+		fmt.Printf("Exception for %s: IsRemoval=%v, Time=%s-%s\n",
+			dateKey.Format("2006-01-02"), exception.IsRemoval, exception.StartTime, exception.EndTime)
 	}
 
 	// Iterate through each day in the date range
@@ -300,11 +308,14 @@ func (s *tutorAvailabilityService) GetAvailabilityForDateRange(tutorID uuid.UUID
 		dayOfWeek := int(date.Weekday())
 		dateKey := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
 
+		fmt.Printf("\nProcessing day: %s (day of week: %d)\n", dateKey.Format("2006-01-02"), dayOfWeek)
+
 		// Check if there are any full-day removals
 		hasFullDayRemoval := false
 		for _, exception := range exceptionsByDate[dateKey] {
 			if exception.IsRemoval && exception.StartTime == "" && exception.EndTime == "" {
 				hasFullDayRemoval = true
+				fmt.Printf("  Full day removal exception found - skipping this day\n")
 				break
 			}
 		}
@@ -328,6 +339,7 @@ func (s *tutorAvailabilityService) GetAvailabilityForDateRange(tutorID uuid.UUID
 					StartTime: schedule.StartTime,
 					EndTime:   schedule.EndTime,
 				})
+				fmt.Printf("  Regular slot for this day: %s-%s\n", schedule.StartTime, schedule.EndTime)
 			}
 		}
 
@@ -337,30 +349,54 @@ func (s *tutorAvailabilityService) GetAvailabilityForDateRange(tutorID uuid.UUID
 		// Add all regular slots to the map
 		for _, slot := range regularSlots {
 			finalSlots[slot.StartTime] = slot.EndTime
+			fmt.Printf("  Added regular slot: %s-%s\n", slot.StartTime, slot.EndTime)
 		}
 
 		// Process exceptions for this day
-		for _, exception := range exceptionsByDate[dateKey] {
-			if exception.IsRemoval {
-				// Remove specific time slot
-				if exception.StartTime != "" && exception.EndTime != "" {
-					delete(finalSlots, exception.StartTime)
+		if exceptions, ok := exceptionsByDate[dateKey]; ok {
+			fmt.Printf("  Found %d exceptions for this day\n", len(exceptions))
+			for _, exception := range exceptions {
+				if exception.IsRemoval {
+					// Remove specific time slot
+					if exception.StartTime != "" && exception.EndTime != "" {
+						if _, exists := finalSlots[exception.StartTime]; exists {
+							fmt.Printf("  Removing slot due to exception: %s-%s\n",
+								exception.StartTime, exception.EndTime)
+							delete(finalSlots, exception.StartTime)
+						} else {
+							fmt.Printf("  Tried to remove slot %s-%s but it didn't exist\n",
+								exception.StartTime, exception.EndTime)
+						}
+					}
+				} else {
+					// Add additional time slot
+					finalSlots[exception.StartTime] = exception.EndTime
+					fmt.Printf("  Added slot from exception: %s-%s\n",
+						exception.StartTime, exception.EndTime)
 				}
-			} else {
-				// Add additional time slot
-				finalSlots[exception.StartTime] = exception.EndTime
 			}
+		} else {
+			fmt.Printf("  No exceptions for this day\n")
 		}
 
 		// Convert the map to AvailabilitySlot array
-		for startTime, endTime := range finalSlots {
-			availableSlots = append(availableSlots, models.AvailabilitySlot{
-				Date:      date,
-				StartTime: startTime,
-				EndTime:   endTime,
-			})
+		if len(finalSlots) > 0 {
+			fmt.Printf("  Final slots for %s:\n", dateKey.Format("2006-01-02"))
+			for startTime, endTime := range finalSlots {
+				availableSlots = append(availableSlots, models.AvailabilitySlot{
+					Date:      date,
+					StartTime: startTime,
+					EndTime:   endTime,
+				})
+				fmt.Printf("    %s-%s\n", startTime, endTime)
+			}
+		} else {
+			fmt.Printf("  No available slots for this day\n")
 		}
 	}
+
+	fmt.Printf("\nTotal available slots: %d\n", len(availableSlots))
+	fmt.Printf("==== END AVAILABILITY CALCULATION ====\n\n")
 
 	return availableSlots, nil
 }

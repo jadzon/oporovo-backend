@@ -65,6 +65,8 @@ func Setup(app *app.Application) *gin.Engine {
 		authorized.POST("/tutors/:tutorID/exceptions", tutorHandler.AddException)
 		authorized.GET("/tutors/:tutorID/exceptions", tutorHandler.GetExceptions)
 
+		authorized.GET("/tutors/:tutorID/students", lessonHandler.GetStudentsForTutor)
+
 	}
 	return router
 }

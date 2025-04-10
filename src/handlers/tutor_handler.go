@@ -301,6 +301,7 @@ func (h *TutorHandler) GetExceptions(c *gin.Context) {
 }
 
 // GetAvailability retrieves a tutor's availability for a date range
+// GetAvailability retrieves a tutor's availability for a date range
 func (h *TutorHandler) GetAvailability(c *gin.Context) {
 	// Get tutor ID from URL parameter
 	tutorIDStr := c.Param("tutorID")
@@ -310,30 +311,43 @@ func (h *TutorHandler) GetAvailability(c *gin.Context) {
 		return
 	}
 
-	// Parse date range from query parameters (required)
-	startDateStr := c.Query("start_date")
-	endDateStr := c.Query("end_date")
+	// Get current time
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
-	if startDateStr == "" || endDateStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "start_date and end_date are required"})
-		return
-	}
-
+	// Parse start date - default to today if not provided
+	startDateStr := c.DefaultQuery("start_date", today.Format("2006-01-02"))
 	startDate, err := time.Parse("2006-01-02", startDateStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_date format. Use YYYY-MM-DD"})
 		return
 	}
 
+	// If start date is in the past, set it to today
+	if startDate.Before(today) {
+		startDate = today
+	}
+
+	// Calculate max end date (1 month from start date)
+	maxEndDate := startDate.AddDate(0, 1, 0)
+
+	// Parse end date
+	endDateStr := c.DefaultQuery("end_date", maxEndDate.Format("2006-01-02"))
 	endDate, err := time.Parse("2006-01-02", endDateStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end_date format. Use YYYY-MM-DD"})
 		return
 	}
 
-	fmt.Printf("\n=== AVAILABILITY REQUEST ===\n")
+	// Limit end date to max 1 month from start date
+	if endDate.After(maxEndDate) {
+		endDate = maxEndDate
+	}
+
+	fmt.Printf("\n================= AVAILABILITY REQUEST =================\n")
 	fmt.Printf("Tutor ID: %s\n", tutorID)
 	fmt.Printf("Date range: %s to %s\n", startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
+	fmt.Printf("Current time: %s\n\n", now.Format("2006-01-02 15:04:05"))
 
 	// 1. Get the tutor's availability (which already accounts for exceptions)
 	availableSlots, err := h.App.TAService.GetAvailabilityForDateRange(tutorID, startDate, endDate)
@@ -342,10 +356,72 @@ func (h *TutorHandler) GetAvailability(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("Initial availability slots (after weekly schedule & exceptions): %d\n", len(availableSlots))
-	for i, slot := range availableSlots {
-		fmt.Printf("Slot %d: %s %s-%s\n", i+1, slot.Date.Format("2006-01-02"), slot.StartTime, slot.EndTime)
+	// Log initial availability grouped by day
+	fmt.Printf("INITIAL AVAILABILITY (%d slots):\n", len(availableSlots))
+	// Group slots by date for easier reading
+	slotsByDate := make(map[string][]string)
+	for _, slot := range availableSlots {
+		dateKey := slot.Date.Format("02.01") // DD.MM format
+		timeSlot := fmt.Sprintf("%s-%s", slot.StartTime, slot.EndTime)
+		slotsByDate[dateKey] = append(slotsByDate[dateKey], timeSlot)
 	}
+
+	// Print slots by date
+	for date, slots := range slotsByDate {
+		fmt.Printf("DAY %s: %s\n", date, strings.Join(slots, ", "))
+	}
+	fmt.Printf("\n")
+
+	// Filter out slots that have already passed on the current day
+	var filteredSlots []models.AvailabilitySlot
+	fmt.Printf("FILTERING OUT PAST SLOTS (current time: %s):\n", now.Format("15:04"))
+
+	for _, slot := range availableSlots {
+		// If this slot is for today, check if it has already passed
+		if slot.Date.Year() == now.Year() && slot.Date.Month() == now.Month() && slot.Date.Day() == now.Day() {
+			// Parse the slot's start time
+			startTimeParts := strings.Split(slot.StartTime, ":")
+			if len(startTimeParts) != 2 {
+				continue // Skip invalid time format
+			}
+			startHour, _ := strconv.Atoi(startTimeParts[0])
+			startMin, _ := strconv.Atoi(startTimeParts[1])
+
+			// Create a datetime for the slot's start time
+			slotStartTime := time.Date(
+				now.Year(), now.Month(), now.Day(),
+				startHour, startMin, 0, 0, now.Location(),
+			)
+
+			// Skip if the slot has already passed
+			if slotStartTime.Before(now) {
+				fmt.Printf("  SKIPPING: %s %s-%s (already passed)\n",
+					slot.Date.Format("02.01"), slot.StartTime, slot.EndTime)
+				continue
+			} else {
+				fmt.Printf("  KEEPING: %s %s-%s (still in future)\n",
+					slot.Date.Format("02.01"), slot.StartTime, slot.EndTime)
+			}
+		}
+
+		filteredSlots = append(filteredSlots, slot)
+	}
+
+	// Log availability after filtering past slots by day
+	fmt.Printf("\nAVAILABILITY AFTER FILTERING PAST SLOTS (%d slots):\n", len(filteredSlots))
+	// Reset and rebuild slots by date
+	slotsByDate = make(map[string][]string)
+	for _, slot := range filteredSlots {
+		dateKey := slot.Date.Format("02.01") // DD.MM format
+		timeSlot := fmt.Sprintf("%s-%s", slot.StartTime, slot.EndTime)
+		slotsByDate[dateKey] = append(slotsByDate[dateKey], timeSlot)
+	}
+
+	// Print slots by date again
+	for date, slots := range slotsByDate {
+		fmt.Printf("DAY %s: %s\n", date, strings.Join(slots, ", "))
+	}
+	fmt.Printf("\n")
 
 	// 2. Get the tutor's scheduled lessons
 	lessons, err := h.App.LessonService.GetLessonsByTutorIDAndDateRange(tutorID, startDate, endDate)
@@ -354,19 +430,42 @@ func (h *TutorHandler) GetAvailability(c *gin.Context) {
 		return
 	}
 
-	fmt.Printf("Found %d lessons in date range\n", len(lessons))
-	for i, lesson := range lessons {
-		fmt.Printf("Lesson %d: ID=%s, Status=%s, Time=%s - %s\n",
-			i+1, lesson.ID, lesson.Status,
-			lesson.StartTime.Format("2006-01-02 15:04"),
-			lesson.EndTime.Format("2006-01-02 15:04"))
+	fmt.Printf("FOUND %d LESSONS IN DATE RANGE:\n", len(lessons))
+	for _, lesson := range lessons {
+		if lesson.Status == models.LessonStatusCancelled {
+			fmt.Printf("  CANCELLED LESSON: %s on %s at %s-%s\n",
+				lesson.ID,
+				lesson.StartTime.Format("02.01"),
+				lesson.StartTime.Format("15:04"),
+				lesson.EndTime.Format("15:04"))
+		} else {
+			fmt.Printf("  ACTIVE LESSON: %s on %s at %s-%s\n",
+				lesson.ID,
+				lesson.StartTime.Format("02.01"),
+				lesson.StartTime.Format("15:04"),
+				lesson.EndTime.Format("15:04"))
+		}
 	}
+	fmt.Printf("\n")
 
 	// 3. Filter/split availability slots that overlap with lessons
-	finalAvailability := filterAvailabilityWithLessons(availableSlots, lessons)
+	finalAvailability := filterAvailabilityWithLessons(filteredSlots, lessons)
 
-	fmt.Printf("Final availability count: %d slots\n", len(finalAvailability))
-	fmt.Printf("=== END OF PROCESSING ===\n\n")
+	// Log final availability by day
+	fmt.Printf("FINAL AVAILABILITY AFTER CONSIDERING LESSONS (%d slots):\n", len(finalAvailability))
+	// Reset and rebuild slots by date
+	slotsByDate = make(map[string][]string)
+	for _, slot := range finalAvailability {
+		dateKey := slot.Date.Format("02.01") // DD.MM format
+		timeSlot := fmt.Sprintf("%s-%s", slot.StartTime, slot.EndTime)
+		slotsByDate[dateKey] = append(slotsByDate[dateKey], timeSlot)
+	}
+
+	// Print slots by date one last time
+	for date, slots := range slotsByDate {
+		fmt.Printf("DAY %s: %s\n", date, strings.Join(slots, ", "))
+	}
+	fmt.Printf("\n================= END OF PROCESSING =================\n\n")
 
 	// IMPORTANT: Ensure the response is never null
 	if finalAvailability == nil {
@@ -376,6 +475,10 @@ func (h *TutorHandler) GetAvailability(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"tutor_id":        tutorID,
 		"available_slots": finalAvailability,
+		"date_range": gin.H{
+			"start_date": startDate.Format("2006-01-02"),
+			"end_date":   endDate.Format("2006-01-02"),
+		},
 	})
 }
 
@@ -521,4 +624,28 @@ func filterAvailabilityWithLessons(slots []models.AvailabilitySlot, lessons []mo
 
 	fmt.Printf("Final slot count after filtering: %d\n", len(finalSlots))
 	return finalSlots
+}
+
+// GetStudentsForTutor returns all students who have taken lessons with this tutor
+func (h *LessonHandler) GetStudentsForTutor(c *gin.Context) {
+	tutorIDStr := c.Param("tutorID")
+	tutorID, err := uuid.Parse(tutorIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid tutor ID"})
+		return
+	}
+
+	students, err := h.App.LessonService.GetStudentsForTutor(tutorID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert students to DTOs
+	var dtos []models.StudentDTO
+	for _, student := range students {
+		dtos = append(dtos, student.ToStudentDTO())
+	}
+
+	c.JSON(http.StatusOK, dtos)
 }

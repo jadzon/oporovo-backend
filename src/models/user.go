@@ -66,6 +66,8 @@ type StudentDTO struct {
 	Email       string    `json:"email"`
 	Avatar      string    `json:"avatar"`
 	Role        string    `json:"role"`
+	Levels      []string  `json:"levels"`
+	Subjects    []string  `json:"subjects"`
 	FirstName   string    `json:"first_name"`
 	LastName    string    `json:"last_name"`
 	Description string    `json:"description"`
@@ -79,9 +81,7 @@ type StudentDTO struct {
 // TutorDTO extends StudentDTO with tutor-specific fields.
 type TutorDTO struct {
 	StudentDTO
-	Levels   []string `json:"levels"`
-	Subjects []string `json:"subjects"`
-	Price    float64  `json:"price"`
+	Price float64 `json:"price"`
 }
 
 // ToStudentDTO converts a User model to a StudentDTO.
@@ -92,6 +92,8 @@ func (u *User) ToStudentDTO() StudentDTO {
 		Email:       u.Email,
 		Avatar:      u.RetrieveAvatarURL(),
 		Role:        u.Role,
+		Levels:      u.Levels,
+		Subjects:    u.Subjects,
 		FirstName:   u.FirstName,
 		LastName:    u.LastName,
 		Description: u.Description,
@@ -107,8 +109,6 @@ func (u *User) ToStudentDTO() StudentDTO {
 func (u *User) ToTutorDTO() TutorDTO {
 	return TutorDTO{
 		StudentDTO: u.ToStudentDTO(),
-		Levels:     u.Levels,
-		Subjects:   u.Subjects,
 		Price:      u.Price,
 	}
 }

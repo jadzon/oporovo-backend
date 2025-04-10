@@ -68,7 +68,7 @@ type LessonDTO struct {
 	Students    []StudentDTO `json:"students"`
 	CreatedAt   time.Time    `json:"created_at"`
 	UpdatedAt   time.Time    `json:"updated_at"`
-	// CourseSummary is included only if the lesson has a valid course.
+
 	Course *CourseSummaryDTO `json:"course,omitempty"`
 }
 

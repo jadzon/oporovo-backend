@@ -24,6 +24,7 @@ type LessonService interface {
 	PostponeLesson(lessonID uuid.UUID, newStart, newEnd time.Time) (models.Lesson, error)
 	GetLessonsForUser(userID uuid.UUID) ([]models.Lesson, error)
 	GetTutorsForUser(userID uuid.UUID) ([]models.User, error)
+	GetStudentsForTutor(tutorID uuid.UUID) ([]models.User, error)
 	EnrollStudent(lessonID uuid.UUID, student models.User) error
 	GetLessonsByTutorIDAndDateRange(tutorID uuid.UUID, startDate, endDate time.Time) ([]models.Lesson, error)
 }
@@ -173,4 +174,9 @@ func (s *lessonService) EnrollStudent(lessonID uuid.UUID, student models.User) e
 }
 func (s *lessonService) GetLessonsByTutorIDAndDateRange(tutorID uuid.UUID, startDate, endDate time.Time) ([]models.Lesson, error) {
 	return s.repo.GetLessonsByTutorIDAndDateRange(tutorID, startDate, endDate)
+}
+
+// GetStudentsForTutor retrieves all students who have taken lessons with this tutor
+func (s *lessonService) GetStudentsForTutor(tutorID uuid.UUID) ([]models.User, error) {
+	return s.repo.GetStudentsForTutor(tutorID)
 }
