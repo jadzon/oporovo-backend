@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"golang.org/x/oauth2"
+	"gorm.io/gorm"
 	"io"
 	"log"
 	"net/http"
@@ -259,4 +261,37 @@ func (h *UserHandler) RefreshTokens(c *gin.Context) {
 	setAccessTokenCookie(c, newAccessToken, h.cookieDomain)
 	setRefreshTokenCookie(c, newRefreshToken, h.cookieDomain)
 	c.JSON(http.StatusOK, gin.H{"message": "Refreshed tokens"})
+}
+func (h *UserHandler) GetUserById(c *gin.Context) {
+	// Get the user ID from the URL parameters
+	userID := c.Param("userID")
+
+	// Parse the UUID
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
+		return
+	}
+
+	// Retrieve the user from the database
+	user, err := h.App.UserService.GetUserByID(userUUID)
+	if err != nil {
+		// If the user is not found
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+			return
+		}
+
+		// For other errors
+		log.Printf("Error retrieving user: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve user"})
+		return
+	}
+
+	// Determine if we should return a tutor or student DTO
+	if user.Role == models.UserRoleTutor {
+		c.JSON(http.StatusOK, user.ToTutorDTO())
+	} else {
+		c.JSON(http.StatusOK, user.ToStudentDTO())
+	}
 }
