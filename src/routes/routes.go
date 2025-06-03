@@ -37,7 +37,6 @@ func Setup(app *app.Application) *gin.Engine {
 	authorized := router.Group("/api")
 	authorized.Use(userHandler.ExtractJWTMiddleware())
 	{
-		authorized.GET("/user", userHandler.HelloAuthorized)
 		authorized.GET("/user/me", userHandler.GetUser)
 		authorized.GET("/user/:userID", userHandler.GetUserById)
 		authorized.POST("/lessons", lessonHandler.CreateLesson)

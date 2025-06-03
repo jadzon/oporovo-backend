@@ -187,3 +187,10 @@ func (r *lessonRepository) GetStudentsForTutor(tutorID uuid.UUID) ([]models.User
 
 	return students, nil
 }
+
+type lessonSearchParams struct {
+}
+
+func (r *lessonRepository) GetLessons() {
+
+}
